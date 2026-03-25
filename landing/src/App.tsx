@@ -1837,7 +1837,7 @@ export default function App() {
       </div>
 
       <div className="page">
-        <div className="layout">
+        <div className={"layout " + (chatOpen ? "layoutChatOpen" : "")}>
           <div className="col">
             <div style={{ height: 16 }} />
 
