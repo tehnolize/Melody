@@ -31,6 +31,18 @@ export async function initDb(pool) {
     )
   `);
 
+  // Ник (display_name) должен быть уникальным (по требованиям UX).
+  // Делаем case-insensitive уникальность через lower(display_name).
+  // Если в БД уже есть дубликаты, индекс может не создаться — тогда просто
+  // оставляем приложение-валидацию (см. authRoutes).
+  try {
+    await pool.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_display_name_lower ON users (lower(display_name))`
+    );
+  } catch {
+    /* ignore */
+  }
+
   await pool.query(`
     CREATE TABLE IF NOT EXISTS tracks (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
