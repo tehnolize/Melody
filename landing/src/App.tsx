@@ -1783,7 +1783,7 @@ export default function App() {
                   }}
                   {...({ webkitdirectory: "true", directory: "true" } as any)}
                 />
-                <div className="row2" style={{ marginBottom: 10 }}>
+                <div className="row2" style={{ marginBottom: 10, gridTemplateColumns: "2fr 0.55fr" }}>
                   <input
                     className="input"
                     placeholder="Название нового альбома"
@@ -1796,6 +1796,7 @@ export default function App() {
                     className="btn btnPrimary"
                     onClick={() => createAlbum().catch(() => {})}
                     disabled={!user}
+                    style={{ justifyContent: "center" }}
                   >
                     Создать
                   </button>
@@ -1907,7 +1908,7 @@ export default function App() {
                                   disabled={!user || albums.length === 0}
                                   onClick={() => setAddDialogTrackId(t.id)}
                                   title="Добавить трек в выбранный альбом"
-                                  style={{ width: 160 }}
+                                  style={{ width: 160, justifyContent: "center" }}
                                 >
                                   + В альбом
                                 </button>
@@ -1917,7 +1918,7 @@ export default function App() {
                                   disabled={!user || inAlbumIds.length === 0}
                                   onClick={() => setRemoveDialogTrackId(t.id)}
                                   title="Убрать трек из выбранного альбома (файл не удаляется)"
-                                  style={{ width: 160 }}
+                                  style={{ width: 160, justifyContent: "center" }}
                                 >
                                   - Из альбома
                                 </button>
@@ -1937,7 +1938,7 @@ export default function App() {
                                       ? `Переместить: из "${firstFromName}" в другой альбом`
                                       : "Переместить трек между альбомами"
                                   }
-                                  style={{ width: 160 }}
+                                  style={{ width: 160, justifyContent: "center" }}
                                 >
                                   ⇄ Переместить
                                 </button>
@@ -1947,7 +1948,7 @@ export default function App() {
                                   disabled={!user}
                                   onClick={() => deleteTrackFile(t.id).catch(() => {})}
                                   title="Удалить mp3 из профиля (и убрать из всех альбомов)"
-                                  style={{ width: 160 }}
+                                  style={{ width: 160, justifyContent: "center" }}
                                 >
                                   Корзина
                                 </button>
