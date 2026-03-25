@@ -277,8 +277,6 @@ export function createMusicRouter(pool, uploadsRoot, log) {
 
   r.get("/api/search", requireAuth, async (req, res) => {
     try {
-      const uid = req.userId;
-
       const rawTitle = String(req.query.q || "").trim();
       const rawOwner = String(req.query.owner || "").trim();
 
@@ -292,8 +290,8 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       // Если введено меньше 2 символов в обоих полях — возвращаем пусто.
       if (!titleOk && !ownerOk) return res.json({ results: [] });
 
-      const params = [uid];
-      let where = `WHERE t.user_id <> $1`;
+      const params = [];
+      let where = `WHERE 1=1`;
 
       if (titleOk) {
         const q = `%${rawTitle.slice(0, 120)}%`;

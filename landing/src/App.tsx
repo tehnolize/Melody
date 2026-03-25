@@ -2515,7 +2515,7 @@ export default function App() {
                 <input
                   className="input"
                   style={{ width: 260 }}
-                  placeholder={user ? "От кого (имя/ник)…" : "—"}
+                  placeholder={user ? "Пользователь (имя/ник)…" : "—"}
                   value={searchOwnerQ}
                   onChange={(e) => setSearchOwnerQ(e.target.value)}
                   disabled={!user}
@@ -2529,7 +2529,7 @@ export default function App() {
                     {!user
                       ? "Войдите, чтобы искать треки."
                       : searchQ.trim().length < 2 && searchOwnerQ.trim().length < 2
-                        ? "Введите минимум 2 символа: в названии трека или в поле “от кого”."
+                        ? "Введите минимум 2 символа: в названии трека или в поле “Пользователь”."
                         : "Ничего не найдено."}
                   </div>
                 </div>
@@ -2551,7 +2551,7 @@ export default function App() {
                         <button
                           type="button"
                           className="btn btnPrimary"
-                          disabled={!user || copyBusyTrackId === h.track_id}
+                          disabled={!user || (h.owner_id && h.owner_id === user.id) || copyBusyTrackId === h.track_id}
                           onClick={() => copyTrackToMyProfile(h.track_id).catch(() => {})}
                         >
                           {copyBusyTrackId === h.track_id ? "Копирование..." : "Скопировать в мой профиль"}
