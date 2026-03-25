@@ -25,6 +25,7 @@ dist-ssr
 
 # Secrets (copy server/.env.example to server/.env locally)
 server/.env
+server/uploads
 .env
 .env.local
 .env.*
