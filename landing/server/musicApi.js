@@ -299,7 +299,7 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       if (ownerOk) {
         const ownerLike = `%${rawOwner.slice(0, 120)}%`;
         params.push(ownerLike);
-        where += ` AND u.display_name ILIKE $${params.length}`;
+        where += ` AND (u.display_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`;
       }
 
       const r0 = await pool.query(
