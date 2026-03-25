@@ -25,6 +25,10 @@ export function createAuthRouter(pool, uploadsRoot, log) {
       if (password.length < 6) return res.status(400).json({ error: "password_too_short" });
       if (displayName.length < 2 || displayName.length > 80) return res.status(400).json({ error: "invalid_display_name" });
 
+      // display_name должен быть уникален (case-insensitive)
+      const dnDup = await pool.query(`SELECT id FROM users WHERE lower(display_name) = lower($1) LIMIT 1`, [displayName]);
+      if (dnDup.rows.length > 0) return res.status(409).json({ error: "display_name_taken" });
+
       const passwordHash = await hashPassword(password);
       const ins = await pool.query(
         `INSERT INTO users (email, password_hash, display_name) VALUES ($1, $2, $3) RETURNING id, email, display_name`,
@@ -41,7 +45,18 @@ export function createAuthRouter(pool, uploadsRoot, log) {
       log.success(`User registered: ${email}`);
       res.json({ user: { id: user.id, email: user.email, displayName: user.display_name } });
     } catch (e) {
-      if (e.code === "23505") return res.status(409).json({ error: "email_taken" });
+      if (e.code === "23505") {
+        // На случай гонки: уточняем, что именно конфликтует.
+        try {
+          const [emailDup, dnDup] = await Promise.all([
+            pool.query(`SELECT id FROM users WHERE email = $1 LIMIT 1`, [email]),
+            pool.query(`SELECT id FROM users WHERE lower(display_name) = lower($1) LIMIT 1`, [displayName]),
+          ]);
+          if (dnDup.rows.length > 0) return res.status(409).json({ error: "display_name_taken" });
+          if (emailDup.rows.length > 0) return res.status(409).json({ error: "email_taken" });
+        } catch {}
+        return res.status(409).json({ error: "email_taken" });
+      }
       log.error("register failed", e.message);
       res.status(500).json({ error: "register_failed" });
     }

@@ -1322,6 +1322,8 @@ export default function App() {
           showToast(
             d.error === "email_taken"
               ? "Этот email уже занят"
+              : d.error === "display_name_taken"
+                ? "Этот ник уже занят"
               : d.error === "invalid_email"
                 ? "Некорректный email"
                 : d.error === "password_too_short"
