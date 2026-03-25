@@ -173,7 +173,7 @@ export default function App() {
     window.setTimeout(() => setToast(""), 2600);
   }
 
-  async function fetchTracks() {
+  async function fetchTracks(options?: { forceOwnedOnly?: boolean }) {
     const r = await api("/api/tracks");
     if (!r.ok) throw new Error("tracks_failed");
     const data = (await r.json()) as { tracks: Track[] };
@@ -182,7 +182,7 @@ export default function App() {
       // Если открыт альбом, то в `prev` уже могут быть добавлены borrowed-треки
       // из album_tracks. /api/tracks возвращает только загруженные вами файлы,
       // поэтому при обновлении библиотеки нельзя “сбрасывать” текущую очередь.
-      if (selectedAlbumId) {
+      if (!options?.forceOwnedOnly && selectedAlbumId) {
         const map = new Map(prev.map((t) => [t.id, t]));
         for (const t of tracks) map.set(t.id, t);
         return Array.from(map.values());
@@ -281,32 +281,50 @@ export default function App() {
     return () => window.clearTimeout(t);
   }, [searchQ, searchOwnerQ, user]);
 
+  // Очередь зависит от режима:
+  // - если альбом НЕ выбран: очередь = все треки из “Мой профиль”
+  // - если альбом выбран: очередь = треки альбома (links). Удаленные из профиля элементы вычищаются.
   useEffect(() => {
-    if (tracks.length === 0) return;
-
     setQueue((prev) => {
+      // Без альбома очередь строго из профиля (owned-треки).
+      if (!selectedAlbumId) {
+        const profileIds = profileTracks.map((t) => t.id);
+        const profileSet = new Set(profileIds);
+        const prevSet = new Set(prev);
+
+        const hasAll = profileIds.every((id) => prevSet.has(id));
+        const hasNoExtras = prev.every((id) => profileSet.has(id));
+
+        const next = hasAll && hasNoExtras && prev.length === profileIds.length ? prev : profileIds;
+        if (next !== prev) localStorage.setItem("mw_queue", JSON.stringify(next));
+        return next;
+      }
+
+      // В режиме альбома не можем фильтровать, пока библиотека не загружена.
+      if (tracks.length === 0) return prev;
+
       const ids = new Set(tracks.map((t) => t.id));
-
-      // Когда открыт альбом, очередь должна быть строго “как в альбоме”.
-      // Поэтому если альбом пустой (queue пустая), не заполняем очередь библиотекой.
-      const next =
-        prev.length === 0
-          ? selectedAlbumId
-            ? []
-            : tracks.map((t) => t.id)
-          : prev.filter((id) => ids.has(id));
-
-      localStorage.setItem("mw_queue", JSON.stringify(next));
+      const next = prev.length === 0 ? [] : prev.filter((id) => ids.has(id));
+      if (next !== prev) localStorage.setItem("mw_queue", JSON.stringify(next));
       return next;
     });
+  }, [tracks, selectedAlbumId, profileTracks]);
 
-    setCurrentId((prev) => {
-      if (prev && tracksById.has(prev)) return prev;
-      const first = tracks[0]?.id || "";
-      if (first) localStorage.setItem("mw_currentId", first);
-      return first;
-    });
-  }, [tracks, tracksById, selectedAlbumId]);
+  // Текущий трек должен всегда входить в очередь.
+  useEffect(() => {
+    if (queue.length === 0) {
+      if (currentId) {
+        setCurrentId("");
+        setCurTime(0);
+      }
+      return;
+    }
+
+    if (!currentId || !queue.includes(currentId)) {
+      setCurrentId(queue[0]);
+      setCurTime(0);
+    }
+  }, [queue, currentId]);
 
   useEffect(() => {
     localStorage.setItem("mw_currentId", currentId);
@@ -1335,6 +1353,27 @@ export default function App() {
     showToast(`Открыт альбом: ${d.album.name}`);
   }
 
+  async function closeAlbum() {
+    if (!selectedAlbumId) return;
+
+    // Сбрасываем выбор альбома и возвращаем очередь к “Мой профиль” (owned-треки).
+    setSelectedAlbumId("");
+    const ids = profileTracks.map((t) => t.id);
+    setQueue(ids);
+    localStorage.setItem("mw_queue", JSON.stringify(ids));
+    setCurrentId(ids[0] || "");
+    setCurTime(0);
+
+    // Убираем borrowed-треки из локального снапшота библиотеки, чтобы в режиме “без альбома”
+    // очередь не могла включить треки, добавленные через чужие альбомы.
+    await fetchTracks({ forceOwnedOnly: true }).catch(() => {});
+  }
+
+  async function toggleAlbum(albumId: string) {
+    if (selectedAlbumId === albumId) return closeAlbum();
+    return openAlbum(albumId);
+  }
+
   async function renameAlbum(albumId: string) {
     const name = renameAlbumValue.trim();
     if (!name) return;
@@ -1363,6 +1402,7 @@ export default function App() {
       if (selectedAlbumId === albumId) setSelectedAlbumId("");
       await loadAlbums();
       await fetchTracks();
+      await loadProfileTracks().catch(() => {});
       showToast("Melody: альбом удалён");
     } else showToast("Не удалось удалить альбом");
   }
@@ -1638,7 +1678,7 @@ export default function App() {
                   ) : (
                     albums.map((a) => (
                       <div key={a.id} className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}>
-                        <div className="qText" onClick={() => openAlbum(a.id).catch(() => {})} style={{ cursor: "pointer" }}>
+                        <div className="qText" onClick={() => toggleAlbum(a.id).catch(() => {})} style={{ cursor: "pointer" }}>
                           <div className="qTitle">{a.name}</div>
                           <div className="qSub">Треков: {a.track_count}</div>
                         </div>
