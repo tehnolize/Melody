@@ -133,3 +133,7 @@ npm run preview
 ## Лицензия
 
 Проект в личном/учебном использовании — уточните у автора при распространении.
+
+## Ссылка на Wiki
+
+https://app.weeek.net/s/proekt-melody-document-OTM0ODc5fGExNjFiNWFlLTlkMTEtNDllMy05OWI0LTY4ZjkxYWZmOGMwYg==
