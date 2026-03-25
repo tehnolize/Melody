@@ -1730,14 +1730,21 @@ export default function App() {
                     <div className="hint">Альбомов пока нет.</div>
                   ) : (
                     albums.map((a) => (
-                      <div key={a.id} className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}>
-                        <div className="qText" onClick={() => toggleAlbum(a.id).catch(() => {})} style={{ cursor: "pointer" }}>
+                      <div
+                        key={a.id}
+                        className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}
+                        onClick={() => toggleAlbum(a.id).catch(() => {})}
+                      >
+                        <div className="qText" style={{ cursor: "pointer" }}>
                           <div className="qTitle">{a.name}</div>
                           <div className="qSub">
                             Треков: {a.track_count} • id: {a.id.slice(0, 8)}
                           </div>
                         </div>
-                        <div style={{ display: "flex", gap: 8 }}>
+                        <div
+                          style={{ display: "flex", gap: 8, marginLeft: "auto" }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <button
                             type="button"
                             className="btn"
@@ -1748,7 +1755,11 @@ export default function App() {
                           >
                             ✎
                           </button>
-                          <button type="button" className="btn btnDanger" onClick={() => removeAlbum(a.id).catch(() => {})}>
+                          <button
+                            type="button"
+                            className="btn btnDanger"
+                            onClick={() => removeAlbum(a.id).catch(() => {})}
+                          >
                             🗑
                           </button>
                         </div>
