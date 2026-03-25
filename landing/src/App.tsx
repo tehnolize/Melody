@@ -2585,6 +2585,7 @@ export default function App() {
 
           {chatOpen && (
             <div className="col">
+              <div style={{ height: 16 }} />
               <div className="panel chatPanel">
                 <div className="panelInner" style={{ paddingBottom: 10 }}>
                   <div className="sectionTitle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
