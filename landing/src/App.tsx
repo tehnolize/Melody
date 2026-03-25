@@ -1,6 +1,21 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
-type Track = { id: string; file: string; title: string; url: string };
+type User = { id: string; email: string; displayName: string };
+type Track = {
+  id: string;
+  file: string;
+  title: string;
+  url: string;
+  ownerId?: string;
+  ownerName?: string;
+  owned?: boolean;
+};
+type SearchHit = { track_id: string; title: string; owner_id: string; owner_name: string };
+type AlbumRow = { id: string; name: string; created_at: string; track_count: number };
+
+async function api(path: string, init?: RequestInit) {
+  return fetch(path, { ...init, credentials: "include" });
+}
 type PopularItem = { rank: number; title: string; artist: string; url: string };
 type ChatMsg = { from: "user" | "bot"; text: string; t: number };
 
@@ -87,9 +102,7 @@ export default function App() {
   const [popularError, setPopularError] = useState<string>("");
 
   const [chatOpen, setChatOpen] = useState<boolean>(() => localStorage.getItem("mw_chatOpen") !== "0");
-  const [chat, setChat] = useState<ChatMsg[]>(() =>
-    safeJson("mw_chat", [{ from: "bot", text: "Привет!", t: Date.now() }])
-  );
+  const [chat, setChat] = useState<ChatMsg[]>([{ from: "bot", text: "Привет!", t: Date.now() }]);
   const [chatInput, setChatInput] = useState<string>("");
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -101,6 +114,30 @@ export default function App() {
   const [deleteMode, setDeleteMode] = useState(false);
   const [deleteSelected, setDeleteSelected] = useState<string[]>([]);
   const [deleteBusy, setDeleteBusy] = useState(false);
+
+  const [user, setUser] = useState<User | null>(null);
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authTab, setAuthTab] = useState<"login" | "register">("login");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authDisplayName, setAuthDisplayName] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+
+  const [searchQ, setSearchQ] = useState("");
+  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
+  const [searchBusy, setSearchBusy] = useState(false);
+
+  const [albums, setAlbums] = useState<AlbumRow[]>([]);
+  const [newAlbumName, setNewAlbumName] = useState("");
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
+  const [renameAlbumId, setRenameAlbumId] = useState<string>("");
+  const [renameAlbumValue, setRenameAlbumValue] = useState<string>("");
+  const [addDialogTrackId, setAddDialogTrackId] = useState<string>("");
+  const [profileTracks, setProfileTracks] = useState<Array<{ id: string; title: string; file: string; url: string }>>([]);
+
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
 
   const [loopMenuOpen, setLoopMenuOpen] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
@@ -125,7 +162,7 @@ export default function App() {
   }
 
   async function fetchTracks() {
-    const r = await fetch("/api/tracks");
+    const r = await api("/api/tracks");
     if (!r.ok) throw new Error("tracks_failed");
     const data = (await r.json()) as { tracks: Track[] };
     const tracks = data.tracks || [];
@@ -133,10 +170,26 @@ export default function App() {
     log.success(`Tracks loaded: ${tracks.length}`);
   }
 
+  async function loadAlbums() {
+    const r = await api("/api/albums");
+    if (!r.ok) return;
+    const data = (await r.json()) as { albums: AlbumRow[] };
+    setAlbums(data.albums || []);
+  }
+
+  async function loadProfileTracks() {
+    const r = await api("/api/profile/me");
+    if (!r.ok) return;
+    const data = (await r.json()) as {
+      tracks: Array<{ id: string; title: string; file: string; url: string }>;
+    };
+    setProfileTracks(data.tracks || []);
+  }
+
   async function fetchPopular() {
     try {
       setPopularError("");
-      const r = await fetch("/api/popular?limit=100");
+      const r = await api("/api/popular?limit=100");
       if (!r.ok) throw new Error("popular_failed");
       const data = (await r.json()) as { items: PopularItem[] };
       const items = Array.isArray(data.items) ? data.items : [];
@@ -153,9 +206,51 @@ export default function App() {
 
   useEffect(() => {
     log.info("MusicWeb initialized");
-    fetchTracks().catch(() => {});
+    (async () => {
+      try {
+        const r = await api("/api/me");
+        if (r.ok) {
+          const d = (await r.json()) as { user: User };
+          setUser(d.user);
+          setAuthOpen(false);
+        } else {
+          setUser(null);
+          setAuthOpen(true);
+        }
+      } catch {
+        setUser(null);
+        setAuthOpen(true);
+      } finally {
+        setSessionChecked(true);
+      }
+    })();
     fetchPopular().catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetchTracks().catch(() => {});
+    loadAlbums().catch(() => {});
+    loadProfileTracks().catch(() => {});
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    const q = searchQ.trim();
+    if (q.length < 2) {
+      setSearchHits([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      setSearchBusy(true);
+      api(`/api/search?q=${encodeURIComponent(q.slice(0, 120))}`)
+        .then((r) => r.json())
+        .then((d: { results?: SearchHit[] }) => setSearchHits(d.results || []))
+        .catch(() => setSearchHits([]))
+        .finally(() => setSearchBusy(false));
+    }, 320);
+    return () => window.clearTimeout(t);
+  }, [searchQ, user]);
 
   useEffect(() => {
     if (tracks.length === 0) return;
@@ -219,16 +314,24 @@ export default function App() {
   }, [chatOpen]);
 
   useEffect(() => {
+    if (!user) {
+      setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+      return;
+    }
+    // История чата изолируется по user.id, чтобы пользователи не видели чужие сообщения на одном устройстве.
+    const key = `mw_chat_${user.id}`;
+    setChat(safeJson<ChatMsg[]>(key, [{ from: "bot", text: `Привет, ${user.displayName}!`, t: Date.now() }]));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
     try {
-      localStorage.setItem("mw_chat", JSON.stringify(chat.slice(-50)));
+      localStorage.setItem(`mw_chat_${user.id}`, JSON.stringify(chat.slice(-50)));
     } catch {}
-  }, [chat]);
+  }, [chat, user]);
 
   function clearChat() {
     setChat([{ from: "bot", text: "Чат очищен. Чем могу помочь?", t: Date.now() }]);
-    try {
-      localStorage.setItem("mw_chat", JSON.stringify([{ from: "bot", text: "Чат очищен. Чем могу помочь?", t: Date.now() }]));
-    } catch {}
   }
 
   useEffect(() => {
@@ -803,6 +906,15 @@ export default function App() {
   async function uploadFiles(list: FileList) {
     const files = Array.from(list);
     if (files.length === 0) return;
+    if (!user) {
+      showToast("Войдите в аккаунт");
+      setAuthOpen(true);
+      return;
+    }
+    if (albums.length === 0) {
+      showToast("Сначала создайте альбом, затем загружайте треки");
+      return;
+    }
 
     const bad = files.filter((f) => !f.name.toLowerCase().endsWith(".mp3"));
     if (bad.length > 0) {
@@ -814,7 +926,7 @@ export default function App() {
     const fd = new FormData();
     for (const f of files) fd.append("files", f);
 
-    const r = await fetch("/api/upload", { method: "POST", body: fd });
+    const r = await api("/api/upload", { method: "POST", body: fd });
     if (!r.ok) {
       showToast("Не удалось загрузить");
       log.error("Upload failed");
@@ -839,7 +951,7 @@ export default function App() {
         content: m.text
       }));
       
-      const r = await fetch("/api/chat", {
+      const r = await api("/api/chat", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: text, history: chatHistory }),
@@ -860,7 +972,7 @@ export default function App() {
     }
     const payload = { name: fbName.trim(), email: fbEmail.trim(), message };
     try {
-      const r = await fetch("/api/feedback", {
+      const r = await api("/api/feedback", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(payload),
@@ -910,15 +1022,37 @@ export default function App() {
 
   async function deleteSelectedTracks() {
     if (deleteSelected.length === 0 || deleteBusy) return;
-    const ok = window.confirm(`Удалить выбранные треки (${deleteSelected.length})? Файлы будут удалены с диска.`);
+    const ownedIds = deleteSelected.filter((id) => tracksById.get(id)?.owned === true);
+    const borrowedIds = deleteSelected.filter((id) => tracksById.get(id)?.owned !== true);
+    const ok = window.confirm(
+      ownedIds.length > 0
+        ? `Удалить ${ownedIds.length} своих файлов с сервера?` +
+            (borrowedIds.length ? ` Ещё ${borrowedIds.length} чужих треков будут убраны только из очереди.` : "")
+        : `Убрать ${borrowedIds.length} треков из очереди (чужие файлы не удаляются)?`
+    );
     if (!ok) return;
 
     setDeleteBusy(true);
     try {
-      const r = await fetch("/api/tracks/delete", {
+      if (borrowedIds.length > 0) {
+        setQueue((prev) => {
+          const next = prev.filter((id) => !borrowedIds.includes(id));
+          localStorage.setItem("mw_queue", JSON.stringify(next));
+          return next;
+        });
+      }
+      if (ownedIds.length === 0) {
+        showToast("Удалены только ссылки на чужие треки из очереди");
+        exitDeleteMode();
+        setDeleteBusy(false);
+        await fetchTracks().catch(() => {});
+        return;
+      }
+
+      const r = await api("/api/tracks/delete", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: deleteSelected }),
+        body: JSON.stringify({ ids: ownedIds }),
       });
       const data = (await r.json()) as { ok?: boolean; deleted?: string[]; failed?: Array<{ id: string; reason: string }> };
       if (!r.ok || !data.ok) {
@@ -943,6 +1077,186 @@ export default function App() {
     }
   }
 
+  async function submitAuth() {
+    setAuthBusy(true);
+    try {
+      if (authTab === "register") {
+        const r = await api("/api/auth/register", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            email: authEmail.trim(),
+            password: authPassword,
+            displayName: authDisplayName.trim(),
+          }),
+        });
+        const d = (await r.json()) as { user?: User; error?: string };
+        if (!r.ok) {
+          showToast(
+            d.error === "email_taken"
+              ? "Этот email уже занят"
+              : d.error === "invalid_email"
+                ? "Некорректный email"
+                : d.error === "password_too_short"
+                  ? "Пароль от 6 символов"
+                  : "Ошибка регистрации"
+          );
+          return;
+        }
+        if (d.user) setUser(d.user);
+        setAuthOpen(false);
+        showToast("Аккаунт создан");
+      } else {
+        const r = await api("/api/auth/login", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: authEmail.trim(), password: authPassword }),
+        });
+        const d = (await r.json()) as { user?: User };
+        if (!r.ok) {
+          showToast("Неверный email или пароль");
+          return;
+        }
+        if (d.user) setUser(d.user);
+        setAuthOpen(false);
+        showToast("С возвращением");
+      }
+    } catch {
+      showToast("Ошибка сети");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  async function logout() {
+    await api("/api/auth/logout", { method: "POST" });
+    setUser(null);
+    setTracks([]);
+    setQueue([]);
+    setAlbums([]);
+    setProfileTracks([]);
+    setSearchHits([]);
+    setSearchQ("");
+    setCurrentId("");
+    setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+    setAuthOpen(true);
+    try {
+      localStorage.removeItem("mw_queue");
+      localStorage.removeItem("mw_currentId");
+    } catch {
+      /* ignore */
+    }
+  }
+
+  async function submitDeleteAccount() {
+    const r = await api("/api/users/me", {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ password: deleteAccountPassword }),
+    });
+    if (r.ok) {
+      setDeleteAccountOpen(false);
+      setDeleteAccountPassword("");
+      setUser(null);
+      setTracks([]);
+      setQueue([]);
+      setAlbums([]);
+      setProfileTracks([]);
+      setSearchHits([]);
+      setSearchQ("");
+      setCurrentId("");
+      setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+      setAuthOpen(true);
+      showToast("Аккаунт и ваши файлы удалены");
+    } else {
+      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      showToast(d.error === "invalid_password" ? "Неверный пароль" : "Не удалось удалить аккаунт");
+    }
+  }
+
+  async function createAlbum() {
+    const name = newAlbumName.trim();
+    if (!name) return;
+    const r = await api("/api/albums", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (r.ok) {
+      setNewAlbumName("");
+      await loadAlbums();
+      showToast("Альбом создан");
+    } else showToast("Не удалось создать альбом");
+  }
+
+  async function addTrackToAlbum(albumId: string, trackId: string) {
+    const r = await api(`/api/albums/${albumId}/tracks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackId }),
+    });
+    if (r.ok) {
+      showToast("Трек добавлен в альбом");
+      setAddDialogTrackId("");
+      await fetchTracks();
+      await loadAlbums();
+    } else showToast("Не удалось добавить (возможно уже в альбоме)");
+  }
+
+  async function openAlbum(albumId: string) {
+    const r = await api(`/api/albums/${albumId}`);
+    if (!r.ok) {
+      showToast("Не удалось открыть альбом");
+      return;
+    }
+    const d = (await r.json()) as { album: { id: string; name: string }; tracks: Track[] };
+    const albumTracks = d.tracks || [];
+    setSelectedAlbumId(albumId);
+    setTracks((prev) => {
+      const map = new Map(prev.map((t) => [t.id, t]));
+      for (const t of albumTracks) map.set(t.id, t);
+      return Array.from(map.values());
+    });
+    const ids = albumTracks.map((t) => t.id);
+    // При выборе альбома полностью переключаем очередь на его треки.
+    setQueue(ids);
+    localStorage.setItem("mw_queue", JSON.stringify(ids));
+    if (ids.length > 0) {
+      setCurrentId(ids[0]);
+      setCurTime(0);
+    }
+    showToast(`Открыт альбом: ${d.album.name}`);
+  }
+
+  async function renameAlbum(albumId: string) {
+    const name = renameAlbumValue.trim();
+    if (!name) return;
+    const r = await api(`/api/albums/${albumId}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    if (r.ok) {
+      setRenameAlbumId("");
+      setRenameAlbumValue("");
+      await loadAlbums();
+      showToast("Альбом переименован");
+    } else showToast("Не удалось переименовать альбом");
+  }
+
+  async function removeAlbum(albumId: string) {
+    // Удаляем только связь альбома и его метаданные; mp3-файлы владельца остаются.
+    const ok = window.confirm("Удалить альбом? Треки в хранилище останутся.");
+    if (!ok) return;
+    const r = await api(`/api/albums/${albumId}`, { method: "DELETE" });
+    if (r.ok) {
+      if (selectedAlbumId === albumId) setSelectedAlbumId("");
+      await loadAlbums();
+      await fetchTracks();
+      showToast("Альбом удалён");
+    } else showToast("Не удалось удалить альбом");
+  }
+
   const queueTracks = useMemo(() => queue.map((id) => tracksById.get(id)).filter(Boolean) as Track[], [queue, tracksById]);
 
   const popularLoop = useMemo(() => {
@@ -951,50 +1265,122 @@ export default function App() {
     return [...list, ...list];
   }, [popular]);
 
+  if (!sessionChecked) {
+    return (
+      <div className="app" style={{ display: "grid", placeItems: "center", minHeight: "100vh", color: "rgba(255,255,255,0.65)" }}>
+        Загрузка…
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="authOnlyScreen">
+        {authOpen && (
+          <div className="modalOverlay">
+            <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+              <div className="modalHead">
+                <div className="modalTitle">{authTab === "login" ? "Вход" : "Регистрация"}</div>
+              </div>
+              <div className="modalBody">
+                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                  <button type="button" className={"btn " + (authTab === "login" ? "btnPrimary" : "")} onClick={() => setAuthTab("login")}>
+                    Вход
+                  </button>
+                  <button
+                    type="button"
+                    className={"btn " + (authTab === "register" ? "btnPrimary" : "")}
+                    onClick={() => setAuthTab("register")}
+                  >
+                    Регистрация
+                  </button>
+                </div>
+                {authTab === "register" ? (
+                  <input
+                    className="input"
+                    placeholder="Имя (отображается в профиле)"
+                    value={authDisplayName}
+                    onChange={(e) => setAuthDisplayName(e.target.value)}
+                    style={{ marginBottom: 8 }}
+                  />
+                ) : null}
+                <input
+                  className="input"
+                  placeholder="Email"
+                  type="email"
+                  autoComplete="email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                />
+                <input
+                  className="input"
+                  placeholder="Пароль"
+                  type="password"
+                  autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  style={{ marginBottom: 12 }}
+                />
+                <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
+                  {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="app">
       <div className="topbar">
-        <div className="topbarInner">
+        <div className="topbarInner" style={{ flexWrap: "wrap" }}>
           <div className="brand">
             <div className="brandBadge">MW</div>
             <div className="brandName">MusicWeb</div>
           </div>
 
+          <div className="topbarSearch">
+            <input
+              className="input searchInput"
+              placeholder={user ? "Поиск треков по названию (другие пользователи)…" : "Войдите, чтобы искать треки"}
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              disabled={!user}
+            />
+            {searchBusy ? <span className="hint" style={{ marginLeft: 8 }}>Поиск…</span> : null}
+          </div>
+
           <div className="actions">
-            <button className="btn" onClick={() => fileInputRef.current?.click()}>
-              + mp3
-            </button>
-            <button className="btn" onClick={() => dirInputRef.current?.click()}>
-              + папка
-            </button>
+            {user ? (
+              <>
+                <span className="userChip" title={user.email}>
+                  {user.displayName}
+                </span>
+                <button type="button" className="btn" onClick={() => logout().catch(() => {})}>
+                  Выйти
+                </button>
+                <button
+                  type="button"
+                  className="btn btnDanger"
+                  onClick={() => {
+                    const ok = window.confirm("Удалить аккаунт? Будут удалены профиль, альбомы и все ваши файлы.");
+                    if (ok) setDeleteAccountOpen(true);
+                  }}
+                >
+                  Удалить аккаунт
+                </button>
+              </>
+            ) : (
+              <button type="button" className="btn btnPrimary" onClick={() => setAuthOpen(true)}>
+                Войти
+              </button>
+            )}
             <button className={"btn " + (chatOpen ? "btnPrimary" : "")} onClick={() => setChatOpen((v) => !v)}>
               чат
             </button>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".mp3,audio/mpeg"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => {
-                if (e.target.files) uploadFiles(e.target.files).catch(() => {});
-                e.target.value = "";
-              }}
-            />
-
-            <input
-              ref={dirInputRef}
-              type="file"
-              accept=".mp3,audio/mpeg"
-              multiple
-              style={{ display: "none" }}
-              onChange={(e) => {
-                if (e.target.files) uploadFiles(e.target.files).catch(() => {});
-                e.target.value = "";
-              }}
-              {...({ webkitdirectory: "true", directory: "true" } as any)}
-            />
           </div>
         </div>
       </div>
@@ -1002,6 +1388,161 @@ export default function App() {
       <div className="page">
         <div className="layout">
           <div className="col">
+            <div className="panel">
+              <div className="panelInner">
+                <div className="sectionTitle">
+                  <span>Результаты поиска</span>
+                  <span className="hint">{user ? "чужие треки → в альбом" : "—"}</span>
+                </div>
+                <div className="searchList">
+                  {searchHits.length === 0 ? (
+                    <div className="hint">{user ? "Введите минимум 2 символа в строке поиска." : "Войдите, чтобы искать."}</div>
+                  ) : (
+                    searchHits.map((h) => (
+                      <div key={h.track_id} className="searchRow">
+                        <div className="qText">
+                          <div className="qTitle">{h.title}</div>
+                          <div className="qSub">{h.owner_name}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn btnPrimary"
+                          disabled={!user}
+                          onClick={() => {
+                            if (albums.length === 0) {
+                              showToast("Сначала создайте альбом");
+                              return;
+                            }
+                            setAddDialogTrackId(h.track_id);
+                          }}
+                        >
+                          В мой альбом
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: 16 }} />
+
+            <div className="panel">
+              <div className="panelInner">
+                <div className="sectionTitle">
+                  <span>Альбомы</span>
+                  <span className="hint">Загрузка треков идёт в ваш профиль</span>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                  <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={!user || albums.length === 0}>
+                    + mp3
+                  </button>
+                  <button className="btn" onClick={() => dirInputRef.current?.click()} disabled={!user || albums.length === 0}>
+                    + папка
+                  </button>
+                  {albums.length === 0 ? <span className="hint">Сначала создайте альбом</span> : null}
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".mp3,audio/mpeg"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    if (e.target.files) uploadFiles(e.target.files).catch(() => {});
+                    e.target.value = "";
+                  }}
+                />
+                <input
+                  ref={dirInputRef}
+                  type="file"
+                  accept=".mp3,audio/mpeg"
+                  multiple
+                  style={{ display: "none" }}
+                  onChange={(e) => {
+                    if (e.target.files) uploadFiles(e.target.files).catch(() => {});
+                    e.target.value = "";
+                  }}
+                  {...({ webkitdirectory: "true", directory: "true" } as any)}
+                />
+                <div className="row2" style={{ marginBottom: 10 }}>
+                  <input
+                    className="input"
+                    placeholder="Название нового альбома"
+                    value={newAlbumName}
+                    onChange={(e) => setNewAlbumName(e.target.value)}
+                    disabled={!user}
+                  />
+                  <button
+                    type="button"
+                    className="btn btnPrimary"
+                    onClick={() => createAlbum().catch(() => {})}
+                    disabled={!user}
+                  >
+                    Создать
+                  </button>
+                </div>
+                <div className="fieldLabel">Альбомы</div>
+                <div className="queueList">
+                  {albums.length === 0 ? (
+                    <div className="hint">Альбомов пока нет.</div>
+                  ) : (
+                    albums.map((a) => (
+                      <div key={a.id} className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}>
+                        <div className="qText" onClick={() => openAlbum(a.id).catch(() => {})} style={{ cursor: "pointer" }}>
+                          <div className="qTitle">{a.name}</div>
+                          <div className="qSub">Треков: {a.track_count}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <button
+                            type="button"
+                            className="btn"
+                            onClick={() => {
+                              setRenameAlbumId(a.id);
+                              setRenameAlbumValue(a.name);
+                            }}
+                          >
+                            ✎
+                          </button>
+                          <button type="button" className="btn btnDanger" onClick={() => removeAlbum(a.id).catch(() => {})}>
+                            🗑
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: 16 }} />
+
+            <div className="panel">
+              <div className="panelInner">
+                <div className="sectionTitle">
+                  <span>Мой профиль</span>
+                  <span className="hint">ваши загрузки</span>
+                </div>
+                <div className="queueList">
+                  {profileTracks.length === 0 ? (
+                    <div className="hint">{user ? "В профиле пока пусто — загрузите mp3." : "Нет данных"}</div>
+                  ) : (
+                    profileTracks.map((t) => (
+                      <div key={t.id} className="queueItem">
+                        <div className="bullet" />
+                        <div className="qText">
+                          <div className="qTitle">{t.title}</div>
+                          <div className="qSub">{t.file}</div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ height: 16 }} />
+
             <div className="panel">
               <div className="panelInner">
                 <div className="sectionTitle">
@@ -1512,6 +2053,148 @@ export default function App() {
               <button className="sendBtn" onClick={() => sendFeedback().catch(() => {})}>
                 Отправить
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {authOpen && (
+        <div className="modalOverlay" onMouseDown={() => user && setAuthOpen(false)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">{authTab === "login" ? "Вход" : "Регистрация"}</div>
+              {user ? (
+                <button type="button" className="btn" onClick={() => setAuthOpen(false)}>
+                  ✕
+                </button>
+              ) : null}
+            </div>
+            <div className="modalBody">
+              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                <button
+                  type="button"
+                  className={"btn " + (authTab === "login" ? "btnPrimary" : "")}
+                  onClick={() => setAuthTab("login")}
+                >
+                  Вход
+                </button>
+                <button
+                  type="button"
+                  className={"btn " + (authTab === "register" ? "btnPrimary" : "")}
+                  onClick={() => setAuthTab("register")}
+                >
+                  Регистрация
+                </button>
+              </div>
+              {authTab === "register" ? (
+                <input
+                  className="input"
+                  placeholder="Имя (отображается в профиле)"
+                  value={authDisplayName}
+                  onChange={(e) => setAuthDisplayName(e.target.value)}
+                  style={{ marginBottom: 8 }}
+                />
+              ) : null}
+              <input
+                className="input"
+                placeholder="Email"
+                type="email"
+                autoComplete="email"
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                style={{ marginBottom: 8 }}
+              />
+              <input
+                className="input"
+                placeholder="Пароль"
+                type="password"
+                autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                style={{ marginBottom: 12 }}
+              />
+              <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
+                {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
+              </button>
+              {!user ? <div className="hint" style={{ marginTop: 10 }}>Без входа недоступны загрузка, поиск и библиотека.</div> : null}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {deleteAccountOpen && (
+        <div className="modalOverlay" onMouseDown={() => setDeleteAccountOpen(false)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">Удалить аккаунт</div>
+              <button type="button" className="btn" onClick={() => setDeleteAccountOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <p className="hint" style={{ marginTop: 0 }}>
+                Будут удалены ваш профиль, все ваши загруженные файлы и альбомы. Действие необратимо.
+              </p>
+              <input
+                className="input"
+                type="password"
+                placeholder="Текущий пароль"
+                value={deleteAccountPassword}
+                onChange={(e) => setDeleteAccountPassword(e.target.value)}
+                style={{ marginBottom: 12 }}
+              />
+              <button type="button" className="sendBtn" style={{ background: "rgba(255,68,68,0.25)" }} onClick={() => submitDeleteAccount().catch(() => {})}>
+                Удалить навсегда
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {renameAlbumId && (
+        <div className="modalOverlay" onMouseDown={() => setRenameAlbumId("")}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">Переименовать альбом</div>
+              <button type="button" className="btn" onClick={() => setRenameAlbumId("")}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <input className="input" value={renameAlbumValue} onChange={(e) => setRenameAlbumValue(e.target.value)} />
+              <button type="button" className="sendBtn" onClick={() => renameAlbum(renameAlbumId).catch(() => {})}>
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addDialogTrackId && (
+        <div className="modalOverlay" onMouseDown={() => setAddDialogTrackId("")}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">Альбомы</div>
+              <button type="button" className="btn" onClick={() => setAddDialogTrackId("")}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <div className="fieldLabel">Выберите, в какой альбом добавить трек</div>
+              <div className="queueList">
+                {albums.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="btn"
+                    style={{ justifyContent: "space-between" }}
+                    onClick={() => addTrackToAlbum(a.id, addDialogTrackId).catch(() => {})}
+                  >
+                    <span>{a.name}</span>
+                    <span style={{ opacity: 0.65 }}>({a.track_count})</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
