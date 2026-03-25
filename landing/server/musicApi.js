@@ -284,20 +284,17 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       const ownerOk = rawOwner.length >= 2;
 
       // Разрешаем поиск:
-      // - по названию (q) если q >= 2
-      // - по имени владельца (owner) если owner >= 2
-      // - по обоим сразу, если оба >= 2
-      // Если введено меньше 2 символов в обоих полях — возвращаем пусто.
-      if (!titleOk && !ownerOk) return res.json({ results: [] });
+      // По требованиям UX:
+      // - поиск всегда требует поле названия трека (q) >= 2
+      // - поле "Пользователь" (owner) опционально и применяется только если titleOk=true
+      if (!titleOk) return res.json({ results: [] });
 
       const params = [];
       let where = `WHERE 1=1`;
 
-      if (titleOk) {
-        const q = `%${rawTitle.slice(0, 120)}%`;
-        params.push(q);
-        where += ` AND t.title ILIKE $${params.length}`;
-      }
+      const q = `%${rawTitle.slice(0, 120)}%`;
+      params.push(q);
+      where += ` AND t.title ILIKE $${params.length}`;
 
       if (ownerOk) {
         const ownerLike = `%${rawOwner.slice(0, 120)}%`;
