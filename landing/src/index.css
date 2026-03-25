@@ -475,9 +475,24 @@ a { color: inherit; text-decoration: none; }
   flex: 0 0 auto;
 }
 
+.bulletOwned {
+  border-color: rgba(0, 211, 138, 0.85);
+  background: rgba(0, 211, 138, 0.18);
+}
+
+.bulletBorrowed {
+  border-color: rgba(146, 70, 255, 0.85);
+  background: rgba(146, 70, 255, 0.18);
+}
+
 .queueItemActive .bullet {
   border-color: rgba(0, 0, 0, 0.2);
   background: var(--accent);
+}
+
+.queueItemActive .bulletBorrowed {
+  border-color: rgba(146, 70, 255, 0.95);
+  background: rgba(146, 70, 255, 0.30);
 }
 
 .queueItemSelected .bullet {

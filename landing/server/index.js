@@ -266,7 +266,7 @@ app.post("/api/feedback", async (req, res) => {
     const transport = makeTransport();
     const from = process.env.SMTP_FROM || process.env.SMTP_USER;
 
-    const subject = "MusicWeb: Пожелание";
+    const subject = "Melody: Пожелание";
     const text = [`Имя: ${name || "-"}`, `Email: ${email || "-"}`, "", message].join("\n");
 
     await transport.verify();
@@ -440,7 +440,7 @@ async function start() {
 
   app.listen(PORT, () => {
     const lines = [
-      "\x1b[36mMusicWeb Server Started\x1b[0m",
+      "\x1b[36mMelody Server Started\x1b[0m",
       `Server:   \x1b[33mhttp://localhost:${PORT}\x1b[0m`,
       `Uploads:  \x1b[33m${UPLOADS_ROOT}\x1b[0m`,
       `Database: \x1b[33mPostgreSQL\x1b[0m`,

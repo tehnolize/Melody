@@ -68,22 +68,16 @@ export function createMusicRouter(pool, uploadsRoot, log) {
   r.get("/api/tracks", requireAuth, async (req, res) => {
     try {
       const uid = req.userId;
+      // В текущей модели:
+      // - Файлы физически всегда хранятся в каталоге пользователя (uploads/<userId>/...)
+      // - Альбомы — это только сортировка/ссылки (album_tracks), но музыка берется из профиля.
+      // Поэтому библиотека = все загруженные пользователем треки.
       const q = await pool.query(
         `
-        -- Библиотека пользователя = его собственные треки + треки, добавленные в его альбомы.
-        WITH lib AS (
-          SELECT t.id, t.user_id, t.title, t.storage_name, u.display_name AS owner_name, TRUE AS owned
-          FROM tracks t
-          JOIN users u ON u.id = t.user_id
-          WHERE t.user_id = $1
-          UNION
-          SELECT t.id, t.user_id, t.title, t.storage_name, u.display_name AS owner_name, FALSE AS owned
-          FROM album_tracks at
-          JOIN albums a ON a.id = at.album_id AND a.user_id = $1
-          JOIN tracks t ON t.id = at.track_id
-          JOIN users u ON u.id = t.user_id
-        )
-        SELECT * FROM lib
+        SELECT t.id, t.user_id, t.title, t.storage_name, u.display_name AS owner_name, TRUE AS owned
+        FROM tracks t
+        JOIN users u ON u.id = t.user_id
+        WHERE t.user_id = $1
         ORDER BY lower(title) ASC
         `,
         [uid]
@@ -173,6 +167,62 @@ export function createMusicRouter(pool, uploadsRoot, log) {
     }
   });
 
+  /**
+   * Копирование чужого трека в профиль пользователя.
+   * Если указан replaceInAlbumId — заменяет ссылку на трек в альбоме (чтобы в очереди метка "свой/чужой" обновилась).
+   */
+  r.post("/api/tracks/copy", requireAuth, async (req, res) => {
+    try {
+      const trackId = String(req.body?.trackId || "").trim();
+      const replaceInAlbumId = req.body?.replaceInAlbumId ? String(req.body.replaceInAlbumId) : "";
+      if (!trackId) return res.status(400).json({ ok: false, error: "no_trackId" });
+
+      const srcQ = await pool.query(`SELECT id, user_id, title, storage_name FROM tracks WHERE id = $1`, [trackId]);
+      if (srcQ.rows.length === 0) return res.status(404).json({ ok: false, error: "track_not_found" });
+
+      const src = srcQ.rows[0];
+      if (src.user_id === req.userId) return res.status(400).json({ ok: false, error: "already_owned" });
+
+      const srcFull = path.join(uploadsRoot, src.user_id, src.storage_name);
+      const targetDir = path.join(uploadsRoot, req.userId);
+
+      await fsp.mkdir(targetDir, { recursive: true });
+
+      // Новый storage_name генерируем случайно, чтобы не конфликтовать с существующими файлами пользователя.
+      const newStorageName = `${randomUUID()}.mp3`;
+      const targetFull = path.join(targetDir, newStorageName);
+
+      await fsp.copyFile(srcFull, targetFull);
+
+      const ins = await pool.query(
+        `INSERT INTO tracks (user_id, title, storage_name) VALUES ($1, $2, $3) RETURNING id`,
+        [req.userId, src.title, newStorageName]
+      );
+      const newTrackId = ins.rows[0]?.id;
+
+      if (!newTrackId) return res.status(500).json({ ok: false, error: "copy_insert_failed" });
+
+      if (replaceInAlbumId) {
+        const aq = await pool.query(`SELECT id FROM albums WHERE id = $1 AND user_id = $2`, [replaceInAlbumId, req.userId]);
+        if (aq.rows.length) {
+          await pool.query(
+            `DELETE FROM album_tracks WHERE album_id = $1 AND track_id = $2`,
+            [replaceInAlbumId, trackId]
+          );
+          await pool.query(
+            `INSERT INTO album_tracks (album_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [replaceInAlbumId, newTrackId]
+          );
+        }
+      }
+
+      return res.json({ ok: true, newTrackId });
+    } catch (e) {
+      log.error("track copy failed", e?.message);
+      res.status(500).json({ ok: false, error: "track_copy_failed" });
+    }
+  });
+
   /** Поток: только если трек есть в БД */
   r.get("/music/:ownerId/:storageName", optionalAuth, async (req, res) => {
     try {
@@ -231,18 +281,28 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       if (raw.length < 2) return res.json({ results: [] });
       const q = `%${raw.slice(0, 120)}%`;
       const uid = req.userId;
+      const rawOwner = String(req.query.owner || "").trim();
+      const ownerLike = rawOwner.length >= 2 ? `%${rawOwner.slice(0, 120)}%` : null;
+
+      const params = [uid, q];
+      let where = `WHERE t.user_id <> $1 AND t.title ILIKE $2`;
+      if (ownerLike) {
+        params.push(ownerLike);
+        where += ` AND u.display_name ILIKE $3`;
+      }
 
       const r0 = await pool.query(
         `
         SELECT t.id AS track_id, t.title, t.user_id AS owner_id, u.display_name AS owner_name
         FROM tracks t
         JOIN users u ON u.id = t.user_id
-        WHERE t.user_id <> $1 AND t.title ILIKE $2
-        ORDER BY t.title ASC
+        ${where}
+        ORDER BY u.display_name ASC, t.title ASC
         LIMIT 50
         `,
-        [uid, q]
+        params
       );
+
       res.json({ results: r0.rows });
     } catch (e) {
       log.error("search failed", e.message);
@@ -261,9 +321,20 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       const u = uq.rows[0];
       const tq = await pool.query(
         `
-        SELECT t.id, t.title, t.storage_name, t.created_at
+        SELECT
+          t.id,
+          t.title,
+          t.storage_name,
+          t.created_at,
+          COALESCE(
+            array_agg(DISTINCT a.id) FILTER (WHERE a.id IS NOT NULL),
+            ARRAY[]::uuid[]
+          ) AS album_ids
         FROM tracks t
+        LEFT JOIN album_tracks at ON at.track_id = t.id
+        LEFT JOIN albums a ON a.id = at.album_id AND a.user_id = $1
         WHERE t.user_id = $1
+        GROUP BY t.id, t.title, t.storage_name, t.created_at
         ORDER BY t.created_at DESC
         `,
         [req.userId]
@@ -273,6 +344,7 @@ export function createMusicRouter(pool, uploadsRoot, log) {
         title: row.title,
         file: displayFileName(row.title, u.display_name),
         url: `/music/${req.userId}/${encodeURIComponent(row.storage_name)}`,
+        albumIds: Array.isArray(row.album_ids) ? row.album_ids : [],
       }));
       res.json({
         user: {
@@ -321,6 +393,12 @@ export function createMusicRouter(pool, uploadsRoot, log) {
     try {
       const name = String(req.body?.name || "").trim();
       if (name.length < 1 || name.length > 120) return res.status(400).json({ error: "invalid_name" });
+
+      const dup = await pool.query(
+        `SELECT id FROM albums WHERE user_id = $1 AND lower(name) = lower($2) LIMIT 1`,
+        [req.userId, name]
+      );
+      if (dup.rows.length > 0) return res.status(409).json({ error: "album_name_taken" });
       const ins = await pool.query(`INSERT INTO albums (user_id, name) VALUES ($1, $2) RETURNING id, name, created_at`, [
         req.userId,
         name,
@@ -388,8 +466,9 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       const aq = await pool.query(`SELECT id FROM albums WHERE id = $1 AND user_id = $2`, [albumId, req.userId]);
       if (aq.rows.length === 0) return res.status(404).json({ error: "album_not_found" });
 
-      const tq = await pool.query(`SELECT id FROM tracks WHERE id = $1`, [trackId]);
+      const tq = await pool.query(`SELECT id, user_id FROM tracks WHERE id = $1`, [trackId]);
       if (tq.rows.length === 0) return res.status(404).json({ error: "track_not_found" });
+      if (tq.rows[0].user_id !== req.userId) return res.status(403).json({ error: "forbidden" });
 
       await pool.query(
         `INSERT INTO album_tracks (album_id, track_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
@@ -407,6 +486,12 @@ export function createMusicRouter(pool, uploadsRoot, log) {
       const albumId = String(req.params.albumId || "");
       const name = String(req.body?.name || "").trim();
       if (!name || name.length > 120) return res.status(400).json({ error: "invalid_name" });
+
+      const dup = await pool.query(
+        `SELECT id FROM albums WHERE user_id = $1 AND lower(name) = lower($2) AND id <> $3 LIMIT 1`,
+        [req.userId, name, albumId]
+      );
+      if (dup.rows.length > 0) return res.status(409).json({ error: "album_name_taken" });
       const q = await pool.query(
         `UPDATE albums SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING id, name, created_at`,
         [name, albumId, req.userId]

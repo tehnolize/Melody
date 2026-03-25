@@ -114,9 +114,13 @@ export default function App() {
   const [deleteMode, setDeleteMode] = useState(false);
   const [deleteSelected, setDeleteSelected] = useState<string[]>([]);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [copyBusyTrackId, setCopyBusyTrackId] = useState<string>("");
 
   const [user, setUser] = useState<User | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
+  // Флаг, чтобы начальный запрос GET /api/me не перетирал state,
+  // если пользователь прямо во время загрузки уже нажал "Войти/Регистрация".
+  const authSubmitInProgressRef = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<"login" | "register">("login");
   const [authEmail, setAuthEmail] = useState("");
@@ -125,8 +129,10 @@ export default function App() {
   const [authBusy, setAuthBusy] = useState(false);
 
   const [searchQ, setSearchQ] = useState("");
+  const [searchOwnerQ, setSearchOwnerQ] = useState("");
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
+  const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
 
   const [albums, setAlbums] = useState<AlbumRow[]>([]);
   const [newAlbumName, setNewAlbumName] = useState("");
@@ -134,7 +140,11 @@ export default function App() {
   const [renameAlbumId, setRenameAlbumId] = useState<string>("");
   const [renameAlbumValue, setRenameAlbumValue] = useState<string>("");
   const [addDialogTrackId, setAddDialogTrackId] = useState<string>("");
-  const [profileTracks, setProfileTracks] = useState<Array<{ id: string; title: string; file: string; url: string }>>([]);
+  const [removeDialogTrackId, setRemoveDialogTrackId] = useState<string>("");
+  const [moveDialogTrackId, setMoveDialogTrackId] = useState<string>("");
+  const [moveFromAlbumId, setMoveFromAlbumId] = useState<string>("");
+  const [moveToAlbumId, setMoveToAlbumId] = useState<string>("");
+  const [profileTracks, setProfileTracks] = useState<Array<{ id: string; title: string; file: string; url: string; albumIds?: string[] }>>([]);
 
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
   const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
@@ -142,6 +152,7 @@ export default function App() {
   const [loopMenuOpen, setLoopMenuOpen] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const [eqTypeMenuOpen, setEqTypeMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   type EqType = "mirror-bars" | "dual-side" | "symmetric" | "wave" | "circle" | "edges-in" | "vertical" | "pulse" | "spectrum" | "bars-3d" | "spiral" | "waterfall" | "particles";
   const [eqType, setEqType] = useState<EqType>(() => {
@@ -155,6 +166,7 @@ export default function App() {
   const loopMenuRef = useRef<HTMLDivElement | null>(null);
   const speedMenuRef = useRef<HTMLDivElement | null>(null);
   const eqTypeMenuRef = useRef<HTMLDivElement | null>(null);
+  const userMenuRef = useRef<HTMLDivElement | null>(null);
 
   function showToast(text: string) {
     setToast(text);
@@ -166,7 +178,17 @@ export default function App() {
     if (!r.ok) throw new Error("tracks_failed");
     const data = (await r.json()) as { tracks: Track[] };
     const tracks = data.tracks || [];
-    setTracks(tracks);
+    setTracks((prev) => {
+      // Если открыт альбом, то в `prev` уже могут быть добавлены borrowed-треки
+      // из album_tracks. /api/tracks возвращает только загруженные вами файлы,
+      // поэтому при обновлении библиотеки нельзя “сбрасывать” текущую очередь.
+      if (selectedAlbumId) {
+        const map = new Map(prev.map((t) => [t.id, t]));
+        for (const t of tracks) map.set(t.id, t);
+        return Array.from(map.values());
+      }
+      return tracks;
+    });
     log.success(`Tracks loaded: ${tracks.length}`);
   }
 
@@ -181,7 +203,7 @@ export default function App() {
     const r = await api("/api/profile/me");
     if (!r.ok) return;
     const data = (await r.json()) as {
-      tracks: Array<{ id: string; title: string; file: string; url: string }>;
+      tracks: Array<{ id: string; title: string; file: string; url: string; albumIds?: string[] }>;
     };
     setProfileTracks(data.tracks || []);
   }
@@ -205,10 +227,11 @@ export default function App() {
   }
 
   useEffect(() => {
-    log.info("MusicWeb initialized");
+    log.info("Melody initialized");
     (async () => {
       try {
         const r = await api("/api/me");
+        if (authSubmitInProgressRef.current) return;
         if (r.ok) {
           const d = (await r.json()) as { user: User };
           setUser(d.user);
@@ -218,10 +241,12 @@ export default function App() {
           setAuthOpen(true);
         }
       } catch {
+        if (authSubmitInProgressRef.current) return;
         setUser(null);
         setAuthOpen(true);
       } finally {
         setSessionChecked(true);
+        authSubmitInProgressRef.current = false;
       }
     })();
     fetchPopular().catch(() => {});
@@ -237,29 +262,40 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
     const q = searchQ.trim();
+    const ownerQ = searchOwnerQ.trim();
     if (q.length < 2) {
       setSearchHits([]);
       return;
     }
     const t = window.setTimeout(() => {
       setSearchBusy(true);
-      api(`/api/search?q=${encodeURIComponent(q.slice(0, 120))}`)
+      const url =
+        `/api/search?q=${encodeURIComponent(q.slice(0, 120))}` +
+        (ownerQ ? `&owner=${encodeURIComponent(ownerQ.slice(0, 120))}` : "");
+      api(url)
         .then((r) => r.json())
         .then((d: { results?: SearchHit[] }) => setSearchHits(d.results || []))
         .catch(() => setSearchHits([]))
         .finally(() => setSearchBusy(false));
     }, 320);
     return () => window.clearTimeout(t);
-  }, [searchQ, user]);
+  }, [searchQ, searchOwnerQ, user]);
 
   useEffect(() => {
     if (tracks.length === 0) return;
 
     setQueue((prev) => {
       const ids = new Set(tracks.map((t) => t.id));
-      const kept = prev.filter((id) => ids.has(id));
-      const add = tracks.map((t) => t.id).filter((id) => !kept.includes(id));
-      const next = [...kept, ...add];
+
+      // Когда открыт альбом, очередь должна быть строго “как в альбоме”.
+      // Поэтому если альбом пустой (queue пустая), не заполняем очередь библиотекой.
+      const next =
+        prev.length === 0
+          ? selectedAlbumId
+            ? []
+            : tracks.map((t) => t.id)
+          : prev.filter((id) => ids.has(id));
+
       localStorage.setItem("mw_queue", JSON.stringify(next));
       return next;
     });
@@ -270,7 +306,7 @@ export default function App() {
       if (first) localStorage.setItem("mw_currentId", first);
       return first;
     });
-  }, [tracks, tracksById]);
+  }, [tracks, tracksById, selectedAlbumId]);
 
   useEffect(() => {
     localStorage.setItem("mw_currentId", currentId);
@@ -344,6 +380,9 @@ export default function App() {
       }
       if (eqTypeMenuRef.current && !eqTypeMenuRef.current.contains(e.target as Node)) {
         setEqTypeMenuOpen(false);
+      }
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -911,10 +950,6 @@ export default function App() {
       setAuthOpen(true);
       return;
     }
-    if (albums.length === 0) {
-      showToast("Сначала создайте альбом, затем загружайте треки");
-      return;
-    }
 
     const bad = files.filter((f) => !f.name.toLowerCase().endsWith(".mp3"));
     if (bad.length > 0) {
@@ -935,6 +970,7 @@ export default function App() {
     log.success(`Files uploaded: ${files.length}`);
     showToast("Файлы добавлены");
     await fetchTracks().catch(() => {});
+    await loadProfileTracks().catch(() => {});
   }
 
   async function sendChat() {
@@ -1021,64 +1057,96 @@ export default function App() {
   }
 
   async function deleteSelectedTracks() {
+    if (!selectedAlbumId) return;
     if (deleteSelected.length === 0 || deleteBusy) return;
-    const ownedIds = deleteSelected.filter((id) => tracksById.get(id)?.owned === true);
-    const borrowedIds = deleteSelected.filter((id) => tracksById.get(id)?.owned !== true);
-    const ok = window.confirm(
-      ownedIds.length > 0
-        ? `Удалить ${ownedIds.length} своих файлов с сервера?` +
-            (borrowedIds.length ? ` Ещё ${borrowedIds.length} чужих треков будут убраны только из очереди.` : "")
-        : `Убрать ${borrowedIds.length} треков из очереди (чужие файлы не удаляются)?`
-    );
-    if (!ok) return;
 
     setDeleteBusy(true);
     try {
-      if (borrowedIds.length > 0) {
-        setQueue((prev) => {
-          const next = prev.filter((id) => !borrowedIds.includes(id));
-          localStorage.setItem("mw_queue", JSON.stringify(next));
-          return next;
-        });
-      }
-      if (ownedIds.length === 0) {
-        showToast("Удалены только ссылки на чужие треки из очереди");
-        exitDeleteMode();
-        setDeleteBusy(false);
-        await fetchTracks().catch(() => {});
-        return;
-      }
+      const ok = window.confirm(`Убрать ${deleteSelected.length} треков из альбома? Файлы в профиле останутся.`);
+      if (!ok) return;
 
-      const r = await api("/api/tracks/delete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ ids: ownedIds }),
-      });
-      const data = (await r.json()) as { ok?: boolean; deleted?: string[]; failed?: Array<{ id: string; reason: string }> };
-      if (!r.ok || !data.ok) {
-        showToast("Не удалось удалить треки");
-        return;
+      // Удаление из “очереди” в режиме альбома = удаление связей album_tracks.
+      for (const id of deleteSelected) {
+        await api(`/api/albums/${selectedAlbumId}/tracks/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
       }
-
-      const deletedCount = Array.isArray(data.deleted) ? data.deleted.length : 0;
-      const failedCount = Array.isArray(data.failed) ? data.failed.length : 0;
-      showToast(
-        failedCount > 0
-          ? `Удалено: ${deletedCount}, ошибок: ${failedCount}`
-          : `Удалено треков: ${deletedCount}`
-      );
 
       exitDeleteMode();
-      await fetchTracks().catch(() => {});
+      await openAlbum(selectedAlbumId).catch(() => {});
+      await loadAlbums().catch(() => {});
+      await loadProfileTracks().catch(() => {});
     } catch {
-      showToast("Ошибка удаления");
+      showToast("Ошибка удаления из альбома");
     } finally {
       setDeleteBusy(false);
     }
   }
 
+  async function deleteTrackFile(trackId: string) {
+    if (!user) {
+      showToast("Войдите в аккаунт");
+      setAuthOpen(true);
+      return;
+    }
+    if (!trackId) return;
+    const ok = window.confirm("Удалить файл mp3? Он будет удален из профиля и из всех альбомов.");
+    if (!ok) return;
+
+    try {
+      const r = await api("/api/tracks/delete", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ids: [trackId] }),
+      });
+      const data = (await r.json().catch(() => ({}))) as { ok?: boolean };
+      if (!r.ok || !data.ok) {
+        showToast("Не удалось удалить трек");
+        return;
+      }
+      showToast("Файл удален");
+      await fetchTracks().catch(() => {});
+      await loadProfileTracks().catch(() => {});
+      await loadAlbums().catch(() => {});
+      if (selectedAlbumId) await openAlbum(selectedAlbumId).catch(() => {});
+    } catch {
+      showToast("Ошибка удаления");
+    }
+  }
+
+  async function copyTrackToMyProfile(trackId: string) {
+    if (!user) {
+      showToast("Войдите в аккаунт");
+      setAuthOpen(true);
+      return;
+    }
+    if (!trackId) return;
+    if (copyBusyTrackId) return;
+    setCopyBusyTrackId(trackId);
+    try {
+      const payload: any = { trackId };
+      const r = await api("/api/tracks/copy", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!r.ok) {
+        const d = (await r.json().catch(() => ({}))) as { error?: string };
+        showToast(d.error ? `Не удалось скопировать: ${d.error}` : "Не удалось скопировать");
+        return;
+      }
+
+      showToast("Melody: трек скопирован в ваш профиль");
+      await fetchTracks().catch(() => {});
+      await loadProfileTracks().catch(() => {});
+    } catch {
+      showToast("Ошибка сети при копировании");
+    } finally {
+      setCopyBusyTrackId("");
+    }
+  }
+
   async function submitAuth() {
     setAuthBusy(true);
+    authSubmitInProgressRef.current = true;
     try {
       if (authTab === "register") {
         const r = await api("/api/auth/register", {
@@ -1105,7 +1173,8 @@ export default function App() {
         }
         if (d.user) setUser(d.user);
         setAuthOpen(false);
-        showToast("Аккаунт создан");
+        showToast("Melody: регистрация успешна");
+        setSessionChecked(true);
       } else {
         const r = await api("/api/auth/login", {
           method: "POST",
@@ -1119,10 +1188,12 @@ export default function App() {
         }
         if (d.user) setUser(d.user);
         setAuthOpen(false);
-        showToast("С возвращением");
+        showToast("Melody: вход выполнен");
+        setSessionChecked(true);
       }
     } catch {
       showToast("Ошибка сети");
+      setSessionChecked(true);
     } finally {
       setAuthBusy(false);
     }
@@ -1167,7 +1238,7 @@ export default function App() {
       setCurrentId("");
       setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
       setAuthOpen(true);
-      showToast("Аккаунт и ваши файлы удалены");
+      showToast("Melody: аккаунт удалён");
     } else {
       const d = (await r.json().catch(() => ({}))) as { error?: string };
       showToast(d.error === "invalid_password" ? "Неверный пароль" : "Не удалось удалить аккаунт");
@@ -1185,8 +1256,11 @@ export default function App() {
     if (r.ok) {
       setNewAlbumName("");
       await loadAlbums();
-      showToast("Альбом создан");
-    } else showToast("Не удалось создать альбом");
+      showToast("Melody: альбом создан");
+    } else {
+      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      showToast(d.error === "album_name_taken" ? "Имя альбома уже занято" : "Не удалось создать альбом");
+    }
   }
 
   async function addTrackToAlbum(albumId: string, trackId: string) {
@@ -1200,7 +1274,40 @@ export default function App() {
       setAddDialogTrackId("");
       await fetchTracks();
       await loadAlbums();
+      await loadProfileTracks().catch(() => {});
+      if (selectedAlbumId === albumId) await openAlbum(albumId).catch(() => {});
     } else showToast("Не удалось добавить (возможно уже в альбоме)");
+  }
+
+  async function removeTrackFromAlbum(albumId: string, trackId: string) {
+    const r = await api(`/api/albums/${albumId}/tracks/${encodeURIComponent(trackId)}`, { method: "DELETE" });
+    if (r.ok) {
+      showToast("Трек убран из альбома");
+      await loadAlbums().catch(() => {});
+      await loadProfileTracks().catch(() => {});
+      // Если пользователь сейчас смотрит этот альбом, обновляем очередь.
+      if (selectedAlbumId === albumId) await openAlbum(albumId).catch(() => {});
+    } else {
+      showToast("Не удалось убрать трек из альбома");
+    }
+  }
+
+  async function moveTrackBetweenAlbums(fromAlbumId: string, toAlbumId: string, trackId: string) {
+    if (!fromAlbumId || !toAlbumId || fromAlbumId === toAlbumId) return;
+    await removeTrackFromAlbum(fromAlbumId, trackId);
+    const r = await api(`/api/albums/${toAlbumId}/tracks`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ trackId }),
+    });
+    if (r.ok) {
+      showToast("Трек перемещен");
+      await loadAlbums().catch(() => {});
+      await loadProfileTracks().catch(() => {});
+      if (selectedAlbumId === toAlbumId) await openAlbum(toAlbumId).catch(() => {});
+    } else {
+      showToast("Не удалось переместить трек");
+    }
   }
 
   async function openAlbum(albumId: string) {
@@ -1240,24 +1347,61 @@ export default function App() {
       setRenameAlbumId("");
       setRenameAlbumValue("");
       await loadAlbums();
-      showToast("Альбом переименован");
-    } else showToast("Не удалось переименовать альбом");
+      showToast("Melody: альбом переименован");
+    } else {
+      const d = (await r.json().catch(() => ({}))) as { error?: string };
+      showToast(d.error === "album_name_taken" ? "Имя альбома уже занято" : "Не удалось переименовать альбом");
+    }
   }
 
   async function removeAlbum(albumId: string) {
     // Удаляем только связь альбома и его метаданные; mp3-файлы владельца остаются.
-    const ok = window.confirm("Удалить альбом? Треки в хранилище останутся.");
+    const ok = window.confirm("Удалить альбом? Музыка не удалится: файлы треков останутся в вашем профиле, изменится только структура альбомов.");
     if (!ok) return;
     const r = await api(`/api/albums/${albumId}`, { method: "DELETE" });
     if (r.ok) {
       if (selectedAlbumId === albumId) setSelectedAlbumId("");
       await loadAlbums();
       await fetchTracks();
-      showToast("Альбом удалён");
+      showToast("Melody: альбом удалён");
     } else showToast("Не удалось удалить альбом");
   }
 
   const queueTracks = useMemo(() => queue.map((id) => tracksById.get(id)).filter(Boolean) as Track[], [queue, tracksById]);
+
+  const removeTrackAlbumIds = useMemo(() => {
+    if (!removeDialogTrackId) return [];
+    const t = profileTracks.find((x) => x.id === removeDialogTrackId);
+    return t && Array.isArray(t.albumIds) ? t.albumIds : [];
+  }, [removeDialogTrackId, profileTracks]);
+
+  const moveTrackAlbumIds = useMemo(() => {
+    if (!moveDialogTrackId) return [];
+    const t = profileTracks.find((x) => x.id === moveDialogTrackId);
+    return t && Array.isArray(t.albumIds) ? t.albumIds : [];
+  }, [moveDialogTrackId, profileTracks]);
+
+  useEffect(() => {
+    // Если пользователь поменял "Откуда" так, что "Куда" совпало, сбрасываем "Куда" на ближайшее другое.
+    if (!moveDialogTrackId) return;
+    if (!moveFromAlbumId) return;
+    if (moveToAlbumId && moveToAlbumId !== moveFromAlbumId) return;
+    const nextTo = albums.find((a) => a.id !== moveFromAlbumId)?.id || "";
+    setMoveToAlbumId(nextTo);
+  }, [moveFromAlbumId, moveDialogTrackId, albums]); 
+
+  useEffect(() => {
+    // При открытии модалки гарантируем, что "Откуда" соответствует реальным albumIds трека.
+    if (!moveDialogTrackId) return;
+    const nextFrom = moveTrackAlbumIds[0] || "";
+    if (nextFrom && nextFrom !== moveFromAlbumId) setMoveFromAlbumId(nextFrom);
+    if (!nextFrom && moveFromAlbumId) setMoveFromAlbumId("");
+  }, [moveDialogTrackId, moveTrackAlbumIds, moveFromAlbumId]);
+
+  useEffect(() => {
+    // Удаление из очереди разрешено только когда очередь сформирована из альбома.
+    if (!selectedAlbumId && deleteMode) exitDeleteMode();
+  }, [selectedAlbumId, deleteMode]);
 
   const popularLoop = useMemo(() => {
     if (popular.length === 0) return [];
@@ -1329,6 +1473,7 @@ export default function App() {
             </div>
           </div>
         )}
+        {toast && <div className="toast">{toast}</div>}
       </div>
     );
   }
@@ -1338,40 +1483,82 @@ export default function App() {
       <div className="topbar">
         <div className="topbarInner" style={{ flexWrap: "wrap" }}>
           <div className="brand">
-            <div className="brandBadge">MW</div>
-            <div className="brandName">MusicWeb</div>
-          </div>
-
-          <div className="topbarSearch">
-            <input
-              className="input searchInput"
-              placeholder={user ? "Поиск треков по названию (другие пользователи)…" : "Войдите, чтобы искать треки"}
-              value={searchQ}
-              onChange={(e) => setSearchQ(e.target.value)}
-              disabled={!user}
-            />
-            {searchBusy ? <span className="hint" style={{ marginLeft: 8 }}>Поиск…</span> : null}
+            <div className="brandName">Melody</div>
           </div>
 
           <div className="actions">
+            <button
+              type="button"
+              className="btn"
+              aria-label="Открыть поиск"
+              title="Поиск"
+              style={{ padding: "10px 12px", width: 46, height: 46, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              onClick={() => {
+                if (!user) {
+                  showToast("Войдите, чтобы искать треки");
+                  setAuthOpen(true);
+                  setSearchOverlayOpen(false);
+                  return;
+                }
+                setSearchOverlayOpen(true);
+              }}
+            >
+              <svg
+                width="26"
+                height="26"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M21 21L16.65 16.65"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </button>
             {user ? (
               <>
-                <span className="userChip" title={user.email}>
-                  {user.displayName}
-                </span>
-                <button type="button" className="btn" onClick={() => logout().catch(() => {})}>
-                  Выйти
-                </button>
-                <button
-                  type="button"
-                  className="btn btnDanger"
-                  onClick={() => {
-                    const ok = window.confirm("Удалить аккаунт? Будут удалены профиль, альбомы и все ваши файлы.");
-                    if (ok) setDeleteAccountOpen(true);
-                  }}
-                >
-                  Удалить аккаунт
-                </button>
+                <div style={{ position: "relative" }} ref={userMenuRef}>
+                  <span
+                    className="userChip"
+                    title={user.email}
+                    style={{ cursor: "pointer" }}
+                    onClick={() => setUserMenuOpen((v) => !v)}
+                  >
+                    {user.displayName}
+                  </span>
+                  {userMenuOpen && (
+                    <div className="dropdownMenu" style={{ right: 0, left: "auto", minWidth: 220 }}>
+                      <div
+                        className="dropdownItem"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          logout().catch(() => {});
+                        }}
+                      >
+                        Выйти
+                      </div>
+                      <div
+                        className="dropdownItem"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          const ok = window.confirm("Удалить аккаунт? Будут удалены профиль, альбомы и все ваши файлы.");
+                          if (ok) setDeleteAccountOpen(true);
+                        }}
+                      >
+                        Удалить аккаунт
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             ) : (
               <button type="button" className="btn btnPrimary" onClick={() => setAuthOpen(true)}>
@@ -1388,43 +1575,6 @@ export default function App() {
       <div className="page">
         <div className="layout">
           <div className="col">
-            <div className="panel">
-              <div className="panelInner">
-                <div className="sectionTitle">
-                  <span>Результаты поиска</span>
-                  <span className="hint">{user ? "чужие треки → в альбом" : "—"}</span>
-                </div>
-                <div className="searchList">
-                  {searchHits.length === 0 ? (
-                    <div className="hint">{user ? "Введите минимум 2 символа в строке поиска." : "Войдите, чтобы искать."}</div>
-                  ) : (
-                    searchHits.map((h) => (
-                      <div key={h.track_id} className="searchRow">
-                        <div className="qText">
-                          <div className="qTitle">{h.title}</div>
-                          <div className="qSub">{h.owner_name}</div>
-                        </div>
-                        <button
-                          type="button"
-                          className="btn btnPrimary"
-                          disabled={!user}
-                          onClick={() => {
-                            if (albums.length === 0) {
-                              showToast("Сначала создайте альбом");
-                              return;
-                            }
-                            setAddDialogTrackId(h.track_id);
-                          }}
-                        >
-                          В мой альбом
-                        </button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-
             <div style={{ height: 16 }} />
 
             <div className="panel">
@@ -1434,13 +1584,12 @@ export default function App() {
                   <span className="hint">Загрузка треков идёт в ваш профиль</span>
                 </div>
                 <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                  <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={!user || albums.length === 0}>
+                  <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={!user}>
                     + mp3
                   </button>
-                  <button className="btn" onClick={() => dirInputRef.current?.click()} disabled={!user || albums.length === 0}>
+                  <button className="btn" onClick={() => dirInputRef.current?.click()} disabled={!user}>
                     + папка
                   </button>
-                  {albums.length === 0 ? <span className="hint">Сначала создайте альбом</span> : null}
                 </div>
                 <input
                   ref={fileInputRef}
@@ -1523,16 +1672,82 @@ export default function App() {
                   <span>Мой профиль</span>
                   <span className="hint">ваши загрузки</span>
                 </div>
-                <div className="queueList">
+                <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
                   {profileTracks.length === 0 ? (
                     <div className="hint">{user ? "В профиле пока пусто — загрузите mp3." : "Нет данных"}</div>
                   ) : (
                     profileTracks.map((t) => (
                       <div key={t.id} className="queueItem">
-                        <div className="bullet" />
                         <div className="qText">
                           <div className="qTitle">{t.title}</div>
                           <div className="qSub">{t.file}</div>
+                        </div>
+                        {/*
+                          Альбомы в новой модели — это сортировка (ссылки в album_tracks),
+                          а mp3 всегда физически хранится в профиле.
+                          albumIds для трека показывает, в каких альбомах он сейчас лежит.
+                        */}
+                        <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", width: 160 }}>
+                          {(() => {
+                            const inAlbumIds = Array.isArray(t.albumIds) ? t.albumIds : [];
+                            const firstFrom = inAlbumIds[0] || "";
+                            const firstFromName = albums.find((a) => a.id === firstFrom)?.name || "";
+                            const availableToIds = albums.map((a) => a.id).filter((id) => id !== firstFrom);
+                            return (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btnPrimary"
+                                  disabled={!user || albums.length === 0}
+                                  onClick={() => setAddDialogTrackId(t.id)}
+                                  title="Добавить трек в выбранный альбом"
+                            style={{ width: 160 }}
+                                >
+                                  + В альбом
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  disabled={!user || inAlbumIds.length === 0}
+                                  onClick={() => setRemoveDialogTrackId(t.id)}
+                                  title="Убрать трек из выбранного альбома (файл не удаляется)"
+                            style={{ width: 160 }}
+                                >
+                                  - Из альбома
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn"
+                                  disabled={!user || inAlbumIds.length === 0 || availableToIds.length === 0}
+                                  onClick={() => {
+                                    setMoveDialogTrackId(t.id);
+                                    const fromId = inAlbumIds[0] || "";
+                                    const toId = availableToIds[0] || "";
+                                    setMoveFromAlbumId(fromId);
+                                    setMoveToAlbumId(toId);
+                                  }}
+                                  title={
+                                    firstFromName
+                                      ? `Переместить: из "${firstFromName}" в другой альбом`
+                                      : "Переместить трек между альбомами"
+                                  }
+                            style={{ width: 160 }}
+                                >
+                                  ⇄ Переместить
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btnDanger"
+                                  disabled={!user}
+                                  onClick={() => deleteTrackFile(t.id).catch(() => {})}
+                                  title="Удалить mp3 из профиля (и убрать из всех альбомов)"
+                            style={{ width: 160 }}
+                                >
+                            Корзина
+                                </button>
+                              </>
+                            );
+                          })()}
                         </div>
                       </div>
                     ))
@@ -1869,29 +2084,33 @@ export default function App() {
                 <div className="sectionTitle">
                   <span>Очередь</span>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                    {!deleteMode ? (
-                      <button className="btn btnDanger" onClick={() => setDeleteMode(true)}>
-                        Удалить
-                      </button>
+                    {selectedAlbumId ? (
+                      !deleteMode ? (
+                        <button className="btn btnDanger" onClick={() => setDeleteMode(true)} disabled={queueTracks.length === 0}>
+                          Убрать
+                        </button>
+                      ) : (
+                        <>
+                          <button className="btn" onClick={exitDeleteMode} disabled={deleteBusy}>
+                            Отмена
+                          </button>
+                          <button
+                            className="btn btnDanger"
+                            onClick={() => deleteSelectedTracks().catch(() => {})}
+                            disabled={deleteBusy || deleteSelected.length === 0}
+                            title={deleteSelected.length === 0 ? "Выберите треки для удаления" : ""}
+                          >
+                            {deleteBusy ? "Удаление..." : `Подтвердить (${deleteSelected.length})`}
+                          </button>
+                        </>
+                      )
                     ) : (
-                      <>
-                        <button className="btn" onClick={exitDeleteMode} disabled={deleteBusy}>
-                          Отмена
-                        </button>
-                        <button
-                          className="btn btnDanger"
-                          onClick={() => deleteSelectedTracks().catch(() => {})}
-                          disabled={deleteBusy || deleteSelected.length === 0}
-                          title={deleteSelected.length === 0 ? "Выберите треки для удаления" : ""}
-                        >
-                          {deleteBusy ? "Удаление..." : `Подтвердить (${deleteSelected.length})`}
-                        </button>
-                      </>
+                      <span className="hint">Удаление из очереди доступно только в альбоме</span>
                     )}
                   </div>
                 </div>
 
-                <div className="queueList">
+                <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
                   {queueTracks.map((t, idx) => {
                     const active = t.id === currentId;
                     const selected = deleteSelected.includes(t.id);
@@ -1936,7 +2155,7 @@ export default function App() {
                           setTimeout(() => play(), 0);
                         }}
                       >
-                        <div className="bullet" />
+                        <div className={"bullet " + (t.owned === false ? "bulletBorrowed" : "bulletOwned")} />
                         <div className="qText">
                           <div className="qTitle">{splitArtistTitle(t.file).title}</div>
                           <div className="qSub">{t.file}</div>
@@ -2053,6 +2272,71 @@ export default function App() {
               <button className="sendBtn" onClick={() => sendFeedback().catch(() => {})}>
                 Отправить
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {searchOverlayOpen && (
+        <div className="modalOverlay" onMouseDown={() => setSearchOverlayOpen(false)}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(860px, 96vw)" }}>
+            <div className="modalHead">
+              <div className="modalTitle">Поиск треков других пользователей</div>
+              <button type="button" className="btn" onClick={() => setSearchOverlayOpen(false)}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+                <input
+                  className="input"
+                  style={{ flex: 1, minWidth: 260 }}
+                  placeholder={user ? "Поиск треков по названию…" : "Войдите, чтобы искать треки"}
+                  value={searchQ}
+                  onChange={(e) => setSearchQ(e.target.value)}
+                  disabled={!user}
+                />
+                <input
+                  className="input"
+                  style={{ width: 260 }}
+                  placeholder={user ? "От кого (имя/ник)…" : "—"}
+                  value={searchOwnerQ}
+                  onChange={(e) => setSearchOwnerQ(e.target.value)}
+                  disabled={!user}
+                />
+                {searchBusy ? <span className="hint" style={{ alignSelf: "center" }}>Поиск…</span> : null}
+              </div>
+
+              <div className="searchList" style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 6 }}>
+                {searchHits.length === 0 ? (
+                  <div className="hint">
+                    {!user
+                      ? "Войдите, чтобы искать треки."
+                      : searchQ.trim().length < 2
+                        ? "Введите минимум 2 символа в поле названия."
+                        : "Ничего не найдено."}
+                  </div>
+                ) : (
+                  searchHits.map((h) => (
+                    <div key={h.track_id} className="searchRow">
+                      <div className="qText">
+                        <div className="qTitle">{h.title}</div>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                        <div className="hint">от: {h.owner_name}</div>
+                        <button
+                          type="button"
+                          className="btn btnPrimary"
+                          disabled={!user || copyBusyTrackId === h.track_id}
+                          onClick={() => copyTrackToMyProfile(h.track_id).catch(() => {})}
+                        >
+                          {copyBusyTrackId === h.track_id ? "Копирование..." : "Скопировать в мой профиль"}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2195,6 +2479,108 @@ export default function App() {
                   </button>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {removeDialogTrackId && (
+        <div className="modalOverlay" onMouseDown={() => setRemoveDialogTrackId("")}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">Убрать трек из альбома</div>
+              <button type="button" className="btn" onClick={() => setRemoveDialogTrackId("")}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <div className="fieldLabel">Выберите альбом, откуда убрать трек (файл останется в профиле)</div>
+              <div className="queueList">
+                {removeTrackAlbumIds.length === 0 ? (
+                  <div className="hint">Трек не добавлен ни в один альбом.</div>
+                ) : (
+                  albums
+                    .filter((a) => removeTrackAlbumIds.includes(a.id))
+                    .map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="btn"
+                    style={{ justifyContent: "space-between" }}
+                    onClick={() => {
+                      removeTrackFromAlbum(a.id, removeDialogTrackId)
+                        .catch(() => {})
+                        .finally(() => setRemoveDialogTrackId(""));
+                    }}
+                  >
+                    <span>{a.name}</span>
+                    <span style={{ opacity: 0.65 }}>({a.track_count})</span>
+                  </button>
+                    ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {moveDialogTrackId && (
+        <div className="modalOverlay" onMouseDown={() => setMoveDialogTrackId("")}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
+            <div className="modalHead">
+              <div className="modalTitle">Переместить трек</div>
+              <button type="button" className="btn" onClick={() => setMoveDialogTrackId("")}>
+                ✕
+              </button>
+            </div>
+            <div className="modalBody">
+              <div className="row2">
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fieldLabel">Откуда</div>
+                  <select
+                    className="input"
+                    value={moveFromAlbumId}
+                    onChange={(e) => setMoveFromAlbumId(e.target.value)}
+                  >
+                    {albums
+                      .filter((a) => moveTrackAlbumIds.includes(a.id))
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="fieldLabel">Куда</div>
+                  <select
+                    className="input"
+                    value={moveToAlbumId}
+                    onChange={(e) => setMoveToAlbumId(e.target.value)}
+                    disabled={!moveFromAlbumId}
+                  >
+                    {albums
+                      .filter((a) => a.id !== moveFromAlbumId)
+                      .map((a) => (
+                        <option key={a.id} value={a.id}>
+                          {a.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="sendBtn"
+                disabled={moveTrackAlbumIds.length === 0 || !moveFromAlbumId || !moveToAlbumId || moveFromAlbumId === moveToAlbumId}
+                onClick={() => {
+                  moveTrackBetweenAlbums(moveFromAlbumId, moveToAlbumId, moveDialogTrackId)
+                    .catch(() => {})
+                    .finally(() => setMoveDialogTrackId(""));
+                }}
+              >
+                Переместить
+              </button>
             </div>
           </div>
         </div>
