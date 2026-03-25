@@ -167,9 +167,13 @@ a { color: inherit; text-decoration: none; }
 
 .layout {
   display: grid;
-  grid-template-columns: 1.25fr 0.75fr;
+  grid-template-columns: 1fr;
   gap: 16px;
   align-items: start;
+}
+
+.layoutChatOpen {
+  grid-template-columns: 1.25fr 0.75fr;
 }
 
 .col {
