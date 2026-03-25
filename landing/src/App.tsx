@@ -2530,7 +2530,7 @@ export default function App() {
                   placeholder={user ? "Пользователь (имя/ник)…" : "—"}
                   value={searchOwnerQ}
                   onChange={(e) => setSearchOwnerQ(e.target.value)}
-                  disabled={!user || searchQ.trim().length < 2}
+                  disabled={!user}
                 />
                 {searchBusy ? <span className="hint" style={{ alignSelf: "center" }}>Поиск…</span> : null}
               </div>
