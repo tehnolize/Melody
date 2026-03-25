@@ -58,6 +58,79 @@ function clamp(n: number, a: number, b: number) {
   return Math.max(a, Math.min(b, n));
 }
 
+type VirtualListProps<T> = {
+  items: T[];
+  itemHeight: number;
+  overscan?: number;
+  getKey?: (item: T, index: number) => string | number;
+  renderItem: (item: T, index: number) => React.ReactNode;
+  containerClassName?: string;
+  containerStyle?: React.CSSProperties;
+};
+
+function VirtualList<T>({
+  items,
+  itemHeight,
+  overscan = 3,
+  getKey,
+  renderItem,
+  containerClassName,
+  containerStyle,
+}: VirtualListProps<T>) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [viewHeight, setViewHeight] = useState(0);
+
+  useEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    const updateView = () => setViewHeight(el.clientHeight || 0);
+    updateView();
+
+    const onScroll = () => setScrollTop(el.scrollTop || 0);
+    el.addEventListener("scroll", onScroll, { passive: true });
+
+    const ro = new ResizeObserver(() => updateView());
+    ro.observe(el);
+
+    return () => {
+      el.removeEventListener("scroll", onScroll);
+      ro.disconnect();
+    };
+  }, []);
+
+  const total = items.length * itemHeight;
+  const safeView = Math.max(0, viewHeight);
+  const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan);
+  const end = Math.min(items.length, Math.ceil((scrollTop + safeView) / itemHeight) + overscan);
+
+  const topPad = start * itemHeight;
+  const bottomPad = Math.max(0, total - end * itemHeight);
+
+  const gap = (containerStyle && typeof containerStyle.gap === "number" ? (containerStyle.gap as number) : 10) as number;
+
+  return (
+    <div
+      ref={scrollerRef}
+      className={containerClassName}
+      style={{
+        overflowY: "auto",
+        display: "block",
+        ...containerStyle,
+      }}
+    >
+      <div style={{ paddingTop: topPad, paddingBottom: bottomPad, display: "flex", flexDirection: "column", gap }}>
+        {items.slice(start, end).map((it, localIdx) => {
+          const idx = start + localIdx;
+          const key = getKey ? getKey(it, idx) : idx;
+          return <React.Fragment key={key}>{renderItem(it, idx)}</React.Fragment>;
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -316,16 +389,19 @@ export default function App() {
     if (!user) return;
     const q = searchQ.trim();
     const ownerQ = searchOwnerQ.trim();
-    if (q.length < 2) {
+    const titleOk = q.length >= 2;
+    const ownerOk = ownerQ.length >= 2;
+    if (!titleOk && !ownerOk) {
       setSearchHits([]);
       return;
     }
     const t = window.setTimeout(() => {
       setSearchBusy(true);
-      const url =
-        `/api/search?q=${encodeURIComponent(q.slice(0, 120))}` +
-        (ownerQ ? `&owner=${encodeURIComponent(ownerQ.slice(0, 120))}` : "");
-      api(url)
+      const params = new URLSearchParams();
+      if (titleOk) params.set("q", q.slice(0, 120));
+      if (ownerOk) params.set("owner", ownerQ.slice(0, 120));
+
+      api(`/api/search?${params.toString()}`)
         .then((r) => r.json())
         .then((d: { results?: SearchHit[] }) => setSearchHits(d.results || []))
         .catch(() => setSearchHits([]))
@@ -1725,13 +1801,20 @@ export default function App() {
                   </button>
                 </div>
                 <div className="fieldLabel">Альбомы</div>
-                <div className="queueList">
-                  {albums.length === 0 ? (
+                {albums.length === 0 ? (
+                  <div className="queueList">
                     <div className="hint">Альбомов пока нет.</div>
-                  ) : (
-                    albums.map((a) => (
+                  </div>
+                ) : (
+                  <VirtualList
+                    items={albums}
+                    itemHeight={92}
+                    overscan={4}
+                    getKey={(a) => a.id}
+                    containerClassName="queueList"
+                    containerStyle={{ maxHeight: 420, paddingRight: 6, gap: 10, overflowY: "auto" }}
+                    renderItem={(a, _idx) => (
                       <div
-                        key={a.id}
                         className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}
                         onClick={() => toggleAlbum(a.id).catch(() => {})}
                       >
@@ -1764,9 +1847,9 @@ export default function App() {
                           </button>
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    )}
+                  />
+                )}
               </div>
             </div>
 
@@ -1778,12 +1861,20 @@ export default function App() {
                   <span>Мой профиль</span>
                   <span className="hint">ваши загрузки</span>
                 </div>
-                <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
-                  {profileTracks.length === 0 ? (
+                {profileTracks.length === 0 ? (
+                  <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
                     <div className="hint">{user ? "В профиле пока пусто — загрузите mp3." : "Нет данных"}</div>
-                  ) : (
-                    profileTracks.map((t) => (
-                      <div key={t.id} className="queueItem">
+                  </div>
+                ) : (
+                  <VirtualList
+                    items={profileTracks}
+                    itemHeight={205}
+                    overscan={3}
+                    getKey={(t) => t.id}
+                    containerClassName="queueList"
+                    containerStyle={{ maxHeight: 420, paddingRight: 6, gap: 10 }}
+                    renderItem={(t, _idx) => (
+                      <div className="queueItem">
                         <div className="qText">
                           <div className="qTitle">{t.title}</div>
                           <div className="qSub">{t.file}</div>
@@ -1793,7 +1884,16 @@ export default function App() {
                           а mp3 всегда физически хранится в профиле.
                           albumIds для трека показывает, в каких альбомах он сейчас лежит.
                         */}
-                        <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end", width: 160 }}>
+                        <div
+                          style={{
+                            marginLeft: "auto",
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 8,
+                            alignItems: "flex-end",
+                            width: 160,
+                          }}
+                        >
                           {(() => {
                             const inAlbumIds = Array.isArray(t.albumIds) ? t.albumIds : [];
                             const firstFrom = inAlbumIds[0] || "";
@@ -1807,7 +1907,7 @@ export default function App() {
                                   disabled={!user || albums.length === 0}
                                   onClick={() => setAddDialogTrackId(t.id)}
                                   title="Добавить трек в выбранный альбом"
-                            style={{ width: 160 }}
+                                  style={{ width: 160 }}
                                 >
                                   + В альбом
                                 </button>
@@ -1817,7 +1917,7 @@ export default function App() {
                                   disabled={!user || inAlbumIds.length === 0}
                                   onClick={() => setRemoveDialogTrackId(t.id)}
                                   title="Убрать трек из выбранного альбома (файл не удаляется)"
-                            style={{ width: 160 }}
+                                  style={{ width: 160 }}
                                 >
                                   - Из альбома
                                 </button>
@@ -1837,7 +1937,7 @@ export default function App() {
                                       ? `Переместить: из "${firstFromName}" в другой альбом`
                                       : "Переместить трек между альбомами"
                                   }
-                            style={{ width: 160 }}
+                                  style={{ width: 160 }}
                                 >
                                   ⇄ Переместить
                                 </button>
@@ -1847,18 +1947,18 @@ export default function App() {
                                   disabled={!user}
                                   onClick={() => deleteTrackFile(t.id).catch(() => {})}
                                   title="Удалить mp3 из профиля (и убрать из всех альбомов)"
-                            style={{ width: 160 }}
+                                  style={{ width: 160 }}
                                 >
-                            Корзина
+                                  Корзина
                                 </button>
                               </>
                             );
                           })()}
                         </div>
                       </div>
-                    ))
-                  )}
-                </div>
+                    )}
+                  />
+                )}
               </div>
             </div>
 
@@ -2216,13 +2316,18 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
-                  {queueTracks.map((t, idx) => {
+                <VirtualList
+                  items={queueTracks}
+                  itemHeight={72}
+                  overscan={3}
+                  getKey={(t) => t.id}
+                  containerClassName="queueList"
+                  containerStyle={{ maxHeight: 420, paddingRight: 6, gap: 10 }}
+                  renderItem={(t, idx) => {
                     const active = t.id === currentId;
                     const selected = deleteSelected.includes(t.id);
                     return (
                       <div
-                        key={t.id}
                         className={
                           "queueItem " +
                           (active ? "queueItemActive " : "") +
@@ -2268,8 +2373,8 @@ export default function App() {
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                  }}
+                />
               </div>
             </div>
 
@@ -2332,13 +2437,17 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="chatBody">
-                  {chat.map((m) => (
-                    <div key={m.t} className={"msg " + (m.from === "user" ? "msgUser" : "")}>
-                      {m.text}
-                    </div>
-                  ))}
-                </div>
+                <VirtualList
+                  items={chat}
+                  itemHeight={90}
+                  overscan={3}
+                  getKey={(m) => m.t}
+                  containerClassName="chatBody"
+                  containerStyle={{ gap: 0 }}
+                  renderItem={(m, _idx) => (
+                    <div className={"msg " + (m.from === "user" ? "msgUser" : "")}>{m.text}</div>
+                  )}
+                />
 
                 <div className="chatInputRow">
                   <input
@@ -2413,18 +2522,26 @@ export default function App() {
                 {searchBusy ? <span className="hint" style={{ alignSelf: "center" }}>Поиск…</span> : null}
               </div>
 
-              <div className="searchList" style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 6 }}>
-                {searchHits.length === 0 ? (
+              {searchHits.length === 0 ? (
+                <div className="searchList" style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 6 }}>
                   <div className="hint">
                     {!user
                       ? "Войдите, чтобы искать треки."
-                      : searchQ.trim().length < 2
-                        ? "Введите минимум 2 символа в поле названия."
+                      : searchQ.trim().length < 2 && searchOwnerQ.trim().length < 2
+                        ? "Введите минимум 2 символа: в названии трека или в поле “от кого”."
                         : "Ничего не найдено."}
                   </div>
-                ) : (
-                  searchHits.map((h) => (
-                    <div key={h.track_id} className="searchRow">
+                </div>
+              ) : (
+                <VirtualList
+                  items={searchHits}
+                  itemHeight={74}
+                  overscan={3}
+                  getKey={(h) => h.track_id}
+                  containerClassName="searchList"
+                  containerStyle={{ maxHeight: "60vh", paddingRight: 6, gap: 8 }}
+                  renderItem={(h, _idx) => (
+                    <div className="searchRow">
                       <div className="qText">
                         <div className="qTitle">{h.title}</div>
                       </div>
@@ -2440,9 +2557,9 @@ export default function App() {
                         </button>
                       </div>
                     </div>
-                  ))
-                )}
-              </div>
+                  )}
+                />
+              )}
             </div>
           </div>
         </div>

@@ -277,18 +277,34 @@ export function createMusicRouter(pool, uploadsRoot, log) {
 
   r.get("/api/search", requireAuth, async (req, res) => {
     try {
-      const raw = String(req.query.q || "").trim();
-      if (raw.length < 2) return res.json({ results: [] });
-      const q = `%${raw.slice(0, 120)}%`;
       const uid = req.userId;
-      const rawOwner = String(req.query.owner || "").trim();
-      const ownerLike = rawOwner.length >= 2 ? `%${rawOwner.slice(0, 120)}%` : null;
 
-      const params = [uid, q];
-      let where = `WHERE t.user_id <> $1 AND t.title ILIKE $2`;
-      if (ownerLike) {
+      const rawTitle = String(req.query.q || "").trim();
+      const rawOwner = String(req.query.owner || "").trim();
+
+      const titleOk = rawTitle.length >= 2;
+      const ownerOk = rawOwner.length >= 2;
+
+      // Разрешаем поиск:
+      // - по названию (q) если q >= 2
+      // - по имени владельца (owner) если owner >= 2
+      // - по обоим сразу, если оба >= 2
+      // Если введено меньше 2 символов в обоих полях — возвращаем пусто.
+      if (!titleOk && !ownerOk) return res.json({ results: [] });
+
+      const params = [uid];
+      let where = `WHERE t.user_id <> $1`;
+
+      if (titleOk) {
+        const q = `%${rawTitle.slice(0, 120)}%`;
+        params.push(q);
+        where += ` AND t.title ILIKE $${params.length}`;
+      }
+
+      if (ownerOk) {
+        const ownerLike = `%${rawOwner.slice(0, 120)}%`;
         params.push(ownerLike);
-        where += ` AND u.display_name ILIKE $3`;
+        where += ` AND u.display_name ILIKE $${params.length}`;
       }
 
       const r0 = await pool.query(
