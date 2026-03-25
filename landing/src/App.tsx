@@ -390,8 +390,8 @@ export default function App() {
     const q = searchQ.trim();
     const ownerQ = searchOwnerQ.trim();
     const titleOk = q.length >= 2;
-    const ownerOk = ownerQ.length >= 2;
-    if (!titleOk && !ownerOk) {
+    const ownerOk = titleOk && ownerQ.length >= 2;
+    if (!titleOk) {
       setSearchHits([]);
       return;
     }
@@ -2518,7 +2518,7 @@ export default function App() {
                   placeholder={user ? "Пользователь (имя/ник)…" : "—"}
                   value={searchOwnerQ}
                   onChange={(e) => setSearchOwnerQ(e.target.value)}
-                  disabled={!user}
+                  disabled={!user || searchQ.trim().length < 2}
                 />
                 {searchBusy ? <span className="hint" style={{ alignSelf: "center" }}>Поиск…</span> : null}
               </div>
@@ -2528,8 +2528,8 @@ export default function App() {
                   <div className="hint">
                     {!user
                       ? "Войдите, чтобы искать треки."
-                      : searchQ.trim().length < 2 && searchOwnerQ.trim().length < 2
-                        ? "Введите минимум 2 символа: в названии трека или в поле “Пользователь”."
+                      : searchQ.trim().length < 2
+                        ? "Введите минимум 2 символа в названии трека."
                         : "Ничего не найдено."}
                   </div>
                 </div>
