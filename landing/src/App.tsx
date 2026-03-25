@@ -208,6 +208,59 @@ export default function App() {
     setProfileTracks(data.tracks || []);
   }
 
+  // Иногда серверные данные профиля приходят без albumIds,
+  // хотя в альбомах уже есть треки (связи в album_tracks есть).
+  // Тогда кнопки "- Из альбома" / "⇄ Переместить" неактивны.
+  // Этот best-effort sync подтягивает membership через GET /api/albums/:albumId.
+  const membershipSyncBusyRef = useRef(false);
+  useEffect(() => {
+    if (membershipSyncBusyRef.current) return;
+    if (albums.length === 0 || profileTracks.length === 0) return;
+
+    const anyAlbumHasTracks = albums.some((a) => Number(a.track_count) > 0);
+    const anyTrackHasAlbumIds = profileTracks.some(
+      (t) => Array.isArray(t.albumIds) && t.albumIds.length > 0
+    );
+
+    // Синхронизируем только если:
+    // - в альбомах есть треки
+    // - ни у одного трека профиля нет albumIds
+    if (!anyAlbumHasTracks || anyTrackHasAlbumIds) return;
+
+    membershipSyncBusyRef.current = true;
+    (async () => {
+      try {
+        const map = new Map<string, string[]>();
+        const albumsWithTracks = albums.filter((a) => Number(a.track_count) > 0);
+
+        await Promise.all(
+          albumsWithTracks.map(async (a) => {
+            const r = await api(`/api/albums/${a.id}`);
+            if (!r.ok) return;
+            const d = (await r.json()) as { tracks: Track[] };
+            const ids = (d.tracks || []).map((t) => t.id).filter(Boolean);
+            for (const trackId of ids) {
+              const prev = map.get(trackId) || [];
+              if (!prev.includes(a.id)) prev.push(a.id);
+              map.set(trackId, prev);
+            }
+          })
+        );
+
+        setProfileTracks((prev) =>
+          prev.map((t) => ({
+            ...t,
+            albumIds: map.get(t.id) || [],
+          }))
+        );
+      } catch {
+        // ignore
+      } finally {
+        membershipSyncBusyRef.current = false;
+      }
+    })();
+  }, [albums, profileTracks]);
+
   async function fetchPopular() {
     try {
       setPopularError("");
@@ -1680,7 +1733,9 @@ export default function App() {
                       <div key={a.id} className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}>
                         <div className="qText" onClick={() => toggleAlbum(a.id).catch(() => {})} style={{ cursor: "pointer" }}>
                           <div className="qTitle">{a.name}</div>
-                          <div className="qSub">Треков: {a.track_count}</div>
+                          <div className="qSub">
+                            Треков: {a.track_count} • id: {a.id.slice(0, 8)}
+                          </div>
                         </div>
                         <div style={{ display: "flex", gap: 8 }}>
                           <button
@@ -2515,7 +2570,9 @@ export default function App() {
                     onClick={() => addTrackToAlbum(a.id, addDialogTrackId).catch(() => {})}
                   >
                     <span>{a.name}</span>
-                    <span style={{ opacity: 0.65 }}>({a.track_count})</span>
+                    <span style={{ opacity: 0.65 }}>
+                      ({a.track_count}) id:{a.id.slice(0, 6)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -2554,7 +2611,9 @@ export default function App() {
                     }}
                   >
                     <span>{a.name}</span>
-                    <span style={{ opacity: 0.65 }}>({a.track_count})</span>
+                    <span style={{ opacity: 0.65 }}>
+                      ({a.track_count}) id:{a.id.slice(0, 6)}
+                    </span>
                   </button>
                     ))
                 )}
@@ -2586,7 +2645,7 @@ export default function App() {
                       .filter((a) => moveTrackAlbumIds.includes(a.id))
                       .map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.name}
+                          {a.name} (id:{a.id.slice(0, 6)})
                         </option>
                       ))}
                   </select>
@@ -2603,7 +2662,7 @@ export default function App() {
                       .filter((a) => a.id !== moveFromAlbumId)
                       .map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.name}
+                          {a.name} (id:{a.id.slice(0, 6)})
                         </option>
                       ))}
                   </select>
