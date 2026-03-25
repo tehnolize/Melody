@@ -206,6 +206,7 @@ export default function App() {
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
+  const searchReqIdRef = useRef(0);
 
   const [albums, setAlbums] = useState<AlbumRow[]>([]);
   const [newAlbumName, setNewAlbumName] = useState("");
@@ -395,7 +396,9 @@ export default function App() {
       setSearchHits([]);
       return;
     }
+    const reqId = ++searchReqIdRef.current;
     const t = window.setTimeout(() => {
+      if (searchReqIdRef.current !== reqId) return;
       setSearchBusy(true);
       const params = new URLSearchParams();
       if (titleOk) params.set("q", q.slice(0, 120));
@@ -403,9 +406,18 @@ export default function App() {
 
       api(`/api/search?${params.toString()}`)
         .then((r) => r.json())
-        .then((d: { results?: SearchHit[] }) => setSearchHits(d.results || []))
-        .catch(() => setSearchHits([]))
-        .finally(() => setSearchBusy(false));
+        .then((d: { results?: SearchHit[] }) => {
+          if (searchReqIdRef.current !== reqId) return;
+          setSearchHits(d.results || []);
+        })
+        .catch(() => {
+          if (searchReqIdRef.current !== reqId) return;
+          setSearchHits([]);
+        })
+        .finally(() => {
+          if (searchReqIdRef.current !== reqId) return;
+          setSearchBusy(false);
+        });
     }, 320);
     return () => window.clearTimeout(t);
   }, [searchQ, searchOwnerQ, user]);
