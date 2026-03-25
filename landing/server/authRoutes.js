@@ -22,7 +22,9 @@ export function createAuthRouter(pool, uploadsRoot, log) {
       const displayName = String(req.body?.displayName || "").trim();
 
       if (!EMAIL_RE.test(email)) return res.status(400).json({ error: "invalid_email" });
-      if (password.length < 6) return res.status(400).json({ error: "password_too_short" });
+      const hasLetter = /[A-Za-zА-Яа-я]/.test(password);
+      const hasDigit = /\d/.test(password);
+      if (password.length < 12 || !hasLetter || !hasDigit) return res.status(400).json({ error: "password_too_short" });
       if (displayName.length < 2 || displayName.length > 80) return res.status(400).json({ error: "invalid_display_name" });
 
       // display_name должен быть уникален (case-insensitive)

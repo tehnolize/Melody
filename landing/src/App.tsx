@@ -199,6 +199,7 @@ export default function App() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
   const [authDisplayName, setAuthDisplayName] = useState("");
+  const [authShowPassword, setAuthShowPassword] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
 
   const [searchQ, setSearchQ] = useState("");
@@ -207,6 +208,12 @@ export default function App() {
   const [searchBusy, setSearchBusy] = useState(false);
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   const searchReqIdRef = useRef(0);
+
+  // Поиск только по трекам в текущем списке (в профиле / в очереди).
+  const [profileTrackSearchOpen, setProfileTrackSearchOpen] = useState(false);
+  const [profileTrackSearchQ, setProfileTrackSearchQ] = useState("");
+  const [queueTrackSearchOpen, setQueueTrackSearchOpen] = useState(false);
+  const [queueTrackSearchQ, setQueueTrackSearchQ] = useState("");
 
   const [albums, setAlbums] = useState<AlbumRow[]>([]);
   const [newAlbumName, setNewAlbumName] = useState("");
@@ -242,9 +249,17 @@ export default function App() {
   const eqTypeMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
-  function showToast(text: string) {
+  function showToast(text: string, ms = 2600) {
     setToast(text);
-    window.setTimeout(() => setToast(""), 2600);
+    window.setTimeout(() => setToast(""), ms);
+  }
+
+  function closeSearchOverlay() {
+    setSearchOverlayOpen(false);
+    setSearchQ("");
+    setSearchOwnerQ("");
+    setSearchHits([]);
+    setSearchBusy(false);
   }
 
   async function fetchTracks(options?: { forceOwnedOnly?: boolean }) {
@@ -391,8 +406,8 @@ export default function App() {
     const q = searchQ.trim();
     const ownerQ = searchOwnerQ.trim();
     const titleOk = q.length >= 2;
-    const ownerOk = titleOk && ownerQ.length >= 2;
-    if (!titleOk) {
+    const ownerOk = ownerQ.length >= 2;
+    if (!titleOk && !ownerOk) {
       setSearchHits([]);
       return;
     }
@@ -1303,11 +1318,22 @@ export default function App() {
     }
   }
 
+  function validateAuthPassword(p: string) {
+    const password = p || "";
+    const hasLetter = /[A-Za-zА-Яа-я]/.test(password);
+    const hasDigit = /\d/.test(password);
+    return password.length >= 12 && hasLetter && hasDigit;
+  }
+
   async function submitAuth() {
     setAuthBusy(true);
     authSubmitInProgressRef.current = true;
     try {
       if (authTab === "register") {
+        if (!validateAuthPassword(authPassword)) {
+          showToast("Пароль должен быть минимум 12 символов и содержать букву и цифру", 5000);
+          return;
+        }
         const r = await api("/api/auth/register", {
           method: "POST",
           headers: { "content-type": "application/json" },
@@ -1327,14 +1353,20 @@ export default function App() {
               : d.error === "invalid_email"
                 ? "Некорректный email"
                 : d.error === "password_too_short"
-                  ? "Пароль от 6 символов"
+                  ? "Пароль минимум 12 символов (буква + цифра)"
                   : "Ошибка регистрации"
           );
           return;
         }
-        if (d.user) setUser(d.user);
-        setAuthOpen(false);
-        showToast("Melody: регистрация успешна");
+        // По требованиям: после регистрации НЕ автологиним.
+        // Сервер ставит cookie, поэтому сразу очищаем ее, чтобы пользователь сам вошел в "Вход".
+        await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+        setUser(null);
+        setAuthTab("login");
+        setAuthPassword("");
+        setAuthDisplayName("");
+        setAuthShowPassword(false);
+        showToast("Регистрация успешна. Теперь войдите.", 5000);
         setSessionChecked(true);
       } else {
         const r = await api("/api/auth/login", {
@@ -1349,7 +1381,11 @@ export default function App() {
         }
         if (d.user) setUser(d.user);
         setAuthOpen(false);
-        showToast("Melody: вход выполнен");
+        showToast("Вход выполнен", 5000);
+        setAuthEmail("");
+        setAuthPassword("");
+        setAuthDisplayName("");
+        setAuthShowPassword(false);
         setSessionChecked(true);
       }
     } catch {
@@ -1369,6 +1405,18 @@ export default function App() {
     setProfileTracks([]);
     setSearchHits([]);
     setSearchQ("");
+    setSearchOwnerQ("");
+    setSearchOverlayOpen(false);
+    setSearchBusy(false);
+    setProfileTrackSearchOpen(false);
+    setProfileTrackSearchQ("");
+    setQueueTrackSearchOpen(false);
+    setQueueTrackSearchQ("");
+    setAuthEmail("");
+    setAuthPassword("");
+    setAuthDisplayName("");
+    setAuthTab("login");
+    setAuthShowPassword(false);
     setCurrentId("");
     setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
     setAuthOpen(true);
@@ -1552,6 +1600,20 @@ export default function App() {
 
   const queueTracks = useMemo(() => queue.map((id) => tracksById.get(id)).filter(Boolean) as Track[], [queue, tracksById]);
 
+  const profileTracksFiltered = useMemo(() => {
+    const q = profileTrackSearchQ.trim().toLowerCase();
+    if (!q) return profileTracks;
+    return profileTracks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [profileTracks, profileTrackSearchQ]);
+
+  const queueTracksFiltered = useMemo(() => {
+    const q = queueTrackSearchQ.trim().toLowerCase();
+    if (!q) return queueTracks;
+    return queueTracks.filter((t) => (t.title || "").toLowerCase().includes(q));
+  }, [queueTracks, queueTrackSearchQ]);
+
+  const queueDragDisabled = queueTrackSearchQ.trim().length > 0;
+
   const removeTrackAlbumIds = useMemo(() => {
     if (!removeDialogTrackId) return [];
     const t = profileTracks.find((x) => x.id === removeDialogTrackId);
@@ -1640,15 +1702,34 @@ export default function App() {
                   onChange={(e) => setAuthEmail(e.target.value)}
                   style={{ marginBottom: 8 }}
                 />
-                <input
-                  className="input"
-                  placeholder="Пароль"
-                  type="password"
-                  autoComplete={authTab === "login" ? "current-password" : "new-password"}
-                  value={authPassword}
-                  onChange={(e) => setAuthPassword(e.target.value)}
-                  style={{ marginBottom: 12 }}
-                />
+                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                  <input
+                    className="input"
+                    placeholder="Пароль"
+                    type={authShowPassword ? "text" : "password"}
+                    autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                    value={authPassword}
+                    onChange={(e) => setAuthPassword(e.target.value)}
+                    style={{ marginBottom: 0, flex: 1 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{ padding: "6px 10px", minWidth: "auto" }}
+                    onClick={() => setAuthShowPassword((v) => !v)}
+                    title={authShowPassword ? "Скрыть пароль" : "Показать пароль"}
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                      <path
+                        d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinejoin="round"
+                      />
+                      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="2" />
+                    </svg>
+                  </button>
+                </div>
                 <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
                   {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
                 </button>
@@ -1680,7 +1761,7 @@ export default function App() {
                 if (!user) {
                   showToast("Войдите, чтобы искать треки");
                   setAuthOpen(true);
-                  setSearchOverlayOpen(false);
+                  closeSearchOverlay();
                   return;
                 }
                 setSearchOverlayOpen(true);
@@ -1874,15 +1955,50 @@ export default function App() {
               <div className="panelInner">
                 <div className="sectionTitle">
                   <span>Мой профиль</span>
-                  <span className="hint">ваши загрузки</span>
+                  <span className="hint">ваши загрузки • В очереди: {queue.length}</span>
                 </div>
+                {profileTracks.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: "6px 10px", minWidth: "auto" }}
+                      onClick={() => {
+                        setProfileTrackSearchOpen((v) => {
+                          const next = !v;
+                          if (!next) setProfileTrackSearchQ("");
+                          return next;
+                        });
+                      }}
+                      title="Поиск по трекам профиля"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                    {profileTrackSearchOpen ? (
+                      <input
+                        className="input"
+                        style={{ flex: 1 }}
+                        placeholder="Поиск треков в профиле…"
+                        value={profileTrackSearchQ}
+                        onChange={(e) => setProfileTrackSearchQ(e.target.value)}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
                 {profileTracks.length === 0 ? (
                   <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
                     <div className="hint">{user ? "В профиле пока пусто — загрузите mp3." : "Нет данных"}</div>
                   </div>
+                ) : profileTracksFiltered.length === 0 ? (
+                  <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
+                    <div className="hint">Ничего не найдено.</div>
+                  </div>
                 ) : (
                   <VirtualList
-                    items={profileTracks}
+                    items={profileTracksFiltered}
                     itemHeight={205}
                     overscan={3}
                     getKey={(t) => t.id}
@@ -2331,8 +2447,40 @@ export default function App() {
                   </div>
                 </div>
 
+                {queueTracks.length > 0 ? (
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "8px 0 10px" }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{ padding: "6px 10px", minWidth: "auto" }}
+                      onClick={() => {
+                        setQueueTrackSearchOpen((v) => {
+                          const next = !v;
+                          if (!next) setQueueTrackSearchQ("");
+                          return next;
+                        });
+                      }}
+                      title="Поиск по трекам очереди"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path d="M10.5 18C14.6421 18 18 14.6421 18 10.5C18 6.35786 14.6421 3 10.5 3C6.35786 3 3 6.35786 3 10.5C3 14.6421 6.35786 18 10.5 18Z" stroke="currentColor" strokeWidth="2"/>
+                        <path d="M21 21L16.65 16.65" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                      </svg>
+                    </button>
+                    {queueTrackSearchOpen ? (
+                      <input
+                        className="input"
+                        style={{ flex: 1 }}
+                        placeholder="Поиск треков в очереди…"
+                        value={queueTrackSearchQ}
+                        onChange={(e) => setQueueTrackSearchQ(e.target.value)}
+                      />
+                    ) : null}
+                  </div>
+                ) : null}
+
                 <VirtualList
-                  items={queueTracks}
+                  items={queueTracksFiltered}
                   itemHeight={72}
                   overscan={3}
                   getKey={(t) => t.id}
@@ -2349,13 +2497,13 @@ export default function App() {
                           (selected ? "queueItemSelected " : "") +
                           (dragOver === idx && dragFrom !== null && dragFrom !== idx ? "dragOver" : "")
                         }
-                        draggable={!deleteMode}
+                        draggable={!deleteMode && !queueDragDisabled}
                         onDragStart={() => {
-                          if (deleteMode) return;
+                          if (deleteMode || queueDragDisabled) return;
                           setDragFrom(idx);
                         }}
                         onDragOver={(e) => {
-                          if (deleteMode) return;
+                          if (deleteMode || queueDragDisabled) return;
                           e.preventDefault();
                           setDragOver(idx);
                         }}
@@ -2364,7 +2512,7 @@ export default function App() {
                           setDragOver(null);
                         }}
                         onDrop={(e) => {
-                          if (deleteMode) return;
+                          if (deleteMode || queueDragDisabled) return;
                           e.preventDefault();
                           if (dragFrom === null) return;
                           reorder(dragFrom, idx);
@@ -2508,11 +2656,11 @@ export default function App() {
       )}
 
       {searchOverlayOpen && (
-        <div className="modalOverlay" onMouseDown={() => setSearchOverlayOpen(false)}>
+        <div className="modalOverlay" onMouseDown={() => closeSearchOverlay()}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(860px, 96vw)" }}>
             <div className="modalHead">
               <div className="modalTitle">Поиск треков других пользователей</div>
-              <button type="button" className="btn" onClick={() => setSearchOverlayOpen(false)}>
+              <button type="button" className="btn" onClick={() => closeSearchOverlay()}>
                 ✕
               </button>
             </div>
@@ -2542,8 +2690,8 @@ export default function App() {
                   <div className="hint">
                     {!user
                       ? "Войдите, чтобы искать треки."
-                      : searchQ.trim().length < 2
-                        ? "Введите минимум 2 символа в названии трека."
+                      : searchQ.trim().length < 2 && searchOwnerQ.trim().length < 2
+                        ? "Введите минимум 2 символа в названии трека или в поле “Пользователь”."
                         : "Ничего не найдено."}
                   </div>
                 </div>
@@ -2626,15 +2774,34 @@ export default function App() {
                 onChange={(e) => setAuthEmail(e.target.value)}
                 style={{ marginBottom: 8 }}
               />
-              <input
-                className="input"
-                placeholder="Пароль"
-                type="password"
-                autoComplete={authTab === "login" ? "current-password" : "new-password"}
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                style={{ marginBottom: 12 }}
-              />
+              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                <input
+                  className="input"
+                  placeholder="Пароль"
+                  type={authShowPassword ? "text" : "password"}
+                  autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  style={{ marginBottom: 0, flex: 1 }}
+                />
+                <button
+                  type="button"
+                  className="btn"
+                  style={{ padding: "6px 10px", minWidth: "auto" }}
+                  onClick={() => setAuthShowPassword((v) => !v)}
+                  title={authShowPassword ? "Скрыть пароль" : "Показать пароль"}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path
+                      d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                    <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" stroke="currentColor" strokeWidth="2" />
+                  </svg>
+                </button>
+              </div>
               <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
                 {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
               </button>
