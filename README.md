@@ -137,3 +137,7 @@ npm run preview
 ## Ссылка на Wiki
 
 https://app.weeek.net/s/proekt-melody-document-OTM0ODc5fGExNjFiNWFlLTlkMTEtNDllMy05OWI0LTY4ZjkxYWZmOGMwYg==
+
+## Ссылка на макеты в Figma
+
+https://www.figma.com/design/te1nPeppvoXtYxYarl6pZu/Melody_1?m=auto&t=wcym26JsUQQr5a5f-6
