@@ -7,10 +7,6 @@
 
 * { box-sizing: border-box; }
 
-html {
-  scroll-behavior: smooth;
-}
-
 html, body, #root {
   height: 100%;
   margin: 0;
@@ -166,7 +162,7 @@ a { color: inherit; text-decoration: none; }
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
-  padding: 18px;
+  padding: 16px;
 }
 
 .layout {
@@ -550,6 +546,7 @@ a { color: inherit; text-decoration: none; }
   gap: 12px;
   width: max-content;
   animation: marquee 180s linear infinite;
+  will-change: transform;
 }
 
 .popularMarquee:hover .popularRow { animation-play-state: paused; }
