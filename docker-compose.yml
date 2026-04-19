@@ -1,0 +1,19 @@
+# PostgreSQL + PostGIS для проекта Melody (локальная разработка)
+# Запуск: docker compose up -d
+# Строка подключения для server/.env:
+# DATABASE_URL=postgresql://melody:melody@localhost:5432/melody
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: melody
+      POSTGRES_PASSWORD: melody
+      POSTGRES_DB: melody
+    ports:
+      - "5432:5432"
+    volumes:
+      - melody_pgdata:/var/lib/postgresql/data
+
+volumes:
+  melody_pgdata:
