@@ -8,6 +8,7 @@ import pg from 'pg';
 import authRoutes from './routes/authRoutes.js';
 import albumRoutes from './routes/albumRoutes.js';
 import profileRoutes from './routes/profileRoutes.js';
+import extraRoutes from './routes/extraRoutes.js';
 import { createTrackRouter } from './routes/trackRoutes.js';
 
 const { Pool } = pg;
@@ -113,6 +114,7 @@ app.use((req, _res, next) => {
 app.use(authRoutes);
 app.use(albumRoutes);
 app.use(profileRoutes);
+app.use(extraRoutes);
 app.use(createTrackRouter(UPLOADS_ROOT));
 
 // Запуск
