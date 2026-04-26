@@ -12,7 +12,13 @@ function isInside(base, target) {
 
 export async function getTracks(req, res) {
   try {
-    const tracks = await getUserTracks(req.pool, req.userId);
+    const rows = await getUserTracks(req.pool, req.userId);
+    const tracks = rows.map((t) => ({
+      ...t,
+      file: t.original_name || t.title || '',
+      url: `/music/${t.user_id}/${encodeURIComponent(t.storage_name)}`,
+      owned: true,
+    }));
     res.json({ tracks });
   } catch (e) {
     res.status(500).json({ error: 'tracks_failed' });
