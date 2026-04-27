@@ -1,135 +1,107 @@
-# Melody
+# Задание 5 — Серверная часть (CRUD)
 
-Мобильно-ориентированный лендинг в сфере digital entertainment: фронтенд на **React** + **Vite**, бэкенд на **Node.js** (**Express**), данные в **PostgreSQL** с расширением **PostGIS** (пользователи, треки, альбомы; опционально геоточка профиля).
+## Ветка: `feature/PROJ-005-server-crud`
 
-## Что нужно установить
+---
 
-| Программа | Зачем |
-|-----------|--------|
-| **[Node.js](https://nodejs.org/)** LTS (рекомендуется 20.x или новее) | Запуск фронтенда и сервера, установка зависимостей через `npm` |
-| **[Docker Desktop](https://www.docker.com/)** (рекомендуется) | Быстрый запуск PostgreSQL + PostGIS через `docker compose` |
-| **PostgreSQL + PostGIS** (без Docker) | Либо свой сервер БД, либо образ из `docker-compose.yml` |
-| **Git** (опционально) | Клонирование репозитория с GitHub |
+## Что сделано в этой ветке
 
-После установки Node.js в терминале должны работать команды:
+Реализована структурированная серверная архитектура на Node.js + Express с разделением на слои: маршруты, контроллеры, сервисы, middleware.
 
-```bash
-node -v
-npm -v
+---
+
+## Созданные файлы
+
+```
+landing/server/
+├── index.js                        — точка входа сервера
+├── routes/
+│   ├── authRoutes.js               — маршруты авторизации
+│   ├── trackRoutes.js              — маршруты треков
+│   ├── albumRoutes.js              — маршруты альбомов
+│   └── profileRoutes.js            — маршруты профиля
+├── controllers/
+│   ├── authController.js           — обработка auth запросов
+│   ├── trackController.js          — обработка track запросов
+│   ├── albumController.js          — обработка album запросов
+│   └── profileController.js        — обработка profile запросов
+├── services/
+│   ├── userService.js              — бизнес-логика пользователей
+│   ├── trackService.js             — бизнес-логика треков
+│   ├── albumService.js             — бизнес-логика альбомов
+│   ├── tokenService.js             — JWT токены
+│   └── passwordService.js          — хеширование паролей
+└── middleware/
+    └── auth.js                     — requireAuth, optionalAuth
 ```
 
-Дополнительно ничего ставить не обязательно: зависимости проекта подтянутся через `npm install` в папках ниже.
+---
 
-## Клонирование и зависимости
+## API маршруты
+
+| Метод | Маршрут | Описание |
+|-------|---------|----------|
+| POST | /api/auth/register | Регистрация |
+| POST | /api/auth/login | Вход |
+| POST | /api/auth/logout | Выход |
+| GET | /api/me | Текущий пользователь |
+| DELETE | /api/users/me | Удалить аккаунт |
+| GET | /api/tracks | Треки пользователя |
+| POST | /api/upload | Загрузить mp3 |
+| POST | /api/tracks/delete | Удалить треки |
+| GET | /api/search | Поиск треков |
+| GET | /api/albums | Список альбомов |
+| POST | /api/albums | Создать альбом |
+| GET | /api/albums/:id | Получить альбом |
+| PATCH | /api/albums/:id | Обновить альбом |
+| DELETE | /api/albums/:id | Удалить альбом |
+| POST | /api/albums/:id/tracks | Добавить трек в альбом |
+| DELETE | /api/albums/:id/tracks/:trackId | Удалить трек из альбома |
+| GET | /api/profile/me | Профиль пользователя |
+| GET | /music/:ownerId/:filename | Стриминг аудио |
+
+---
+
+## Запуск сервера
 
 ```bash
-git clone https://github.com/tehnolize/Melody.git
-cd Melody/landing
+cd landing/server
 npm install
-cd server
-npm install
-cd ..
+node index.js
 ```
 
-## База данных (PostgreSQL + PostGIS)
+Сервер запустится на `http://localhost:8787`
 
-Сервер при старте создаёт таблицы и включает расширение PostGIS (`CREATE EXTENSION postgis`).
+---
 
-**Вариант с Docker** (из корня репозитория, где лежит `docker-compose.yml`):
+## Технологии
 
-```bash
-docker compose up -d
-```
+- **Node.js** — среда выполнения
+- **Express** — веб-фреймворк
+- **pg** — PostgreSQL клиент
+- **bcrypt** — хеширование паролей
+- **jsonwebtoken** — JWT токены
+- **multer** — загрузка файлов
+- **cookie-parser** — работа с cookie
+- **cors** — CORS заголовки
+- **dotenv** — переменные окружения
 
-Строка подключения по умолчанию для `server/.env`:
+---
 
-`DATABASE_URL=postgresql://melody:melody@localhost:5432/melody`
+## Коммиты ветки
 
-**Обязательно** задайте в `server/.env` секрет `JWT_SECRET` (длинная случайная строка, не коммитьте в git).
-
-## Конфигурация бэкенда (почта и GPT)
-
-1. Скопируйте пример переменных окружения:
-
-   ```bash
-   copy server\.env.example server\.env
-   ```
-
-   В PowerShell можно так: `Copy-Item server\.env.example server\.env`
-
-2. Откройте `server/.env`: укажите `DATABASE_URL`, `JWT_SECRET`, при необходимости SMTP и ключ OpenAI (см. комментарии в `server/.env.example`).
-
-Без корректного SMTP отправка формы обратной связи может не работать; без `OPENAI_API_KEY` чат GPT на сервере будет отключён.
-
-## Функциональность аккаунтов
-
-- Регистрация и вход (сессия в httpOnly cookie).
-- У каждого пользователя свой **профиль** со списком **загруженных** треков.
-- **Поиск** по названию треков других пользователей; найденный трек можно добавить в **свой альбом** (связь хранится в БД, файл остаётся у владельца).
-- **Удаление аккаунта** удаляет пользователя в БД (каскадно — альбомы и ссылки), а также папку с его файлами на диске.
-- Опционально: `PATCH /api/me/location` — координаты для поля PostGIS `location` (широта/долгота WGS84).
-
-## Что обновлено в текущей версии
-
-- Альбомы работают как **сортировка/links**: удаление альбома или “Убрать” удаляет только связи; физическое удаление mp3 делается кнопкой “Корзина” в профиле.
-- Загружать mp3 можно сразу после логина (без требования заранее создавать альбом). После загрузки обновляются библиотека и профиль.
-- Блок альбомов переделан в **список** (вместо выпадающего списка): можно открыть, переименовать, удалить.
-- При открытии альбома очередь заполняется именно треками выбранного альбома; если альбом пустой — очередь остаётся пустой.
-- Повторный клик по уже выбранному альбому снимает выбор: очередь переключается обратно на треки из “Мой профиль”.
-- Поиск вынесен в **модальный overlay**: отдельные поля `q` (название трека) и `owner` (имя владельца), запрос уходит в `GET /api/search?q=&owner=`.
-- Для каждого альбома в интерфейсе рядом с названием показывается короткий `id` (первые символы UUID), чтобы было проще различать альбомы.
-- Если в профиле пришли пустые `albumIds`, но в альбомах есть треки, кнопки **“- Из альбома”** и **“⇄ Переместить”** подхватывают связи через `GET /api/albums/:albumId`.
-- Чат и пожелания используют серверные endpoints: `POST /api/chat` и `POST /api/feedback`, история чата хранится в `localStorage` по ключу `mw_chat_<userId>`.
-- При закрытии чата кнопкой в header панель скрывается и блок слева расширяется (пустое пространство не остаётся).
-- Отступы “Альбомы” и “Чат” от шапки (topbar) выровнены по одной линии.
-- В header пользовательское меню (dropdown): “Выйти” и “Удалить аккаунт”; при выходе очищаются данные текущей сессии.
-
-## Где хранятся файлы пользователей
-
-- Физические mp3-файлы хранятся в `landing/server/uploads/<user_id>/`.
-- В БД сохраняется только метадата: `tracks.title`, `tracks.storage_name`, владелец `tracks.user_id`.
-- При удалении аккаунта удаляется запись пользователя в БД и каталог `uploads/<user_id>` с файлами.
-
-## Запуск в режиме разработки
-
-Нужны **два терминала** (или два процесса): API-сервер и Vite.
-
-**Терминал 1 — бэкенд** (из папки `landing`):
-
-```bash
-cd landing\server
-npm run dev
-```
-
-По умолчанию API слушает порт **8787**.
-
-**Терминал 2 — фронтенд** (из папки `landing`):
-
-```bash
-cd landing
-npm run dev
-```
-
-Vite обычно открывает сайт на **http://localhost:5173** и проксирует запросы `/api` и `/music` на `http://localhost:8787` (см. `vite.config.ts`).
-
-Откройте в браузере адрес, который покажет Vite (часто `http://localhost:5173`).
-
-## Сборка для продакшена
-
-```bash
-cd landing
-npm run build
-npm run preview
-```
-
-Статическая сборка лежит в `landing/dist`. Для полноценной работы API и прокси в продакшене нужно настроить веб-сервер (nginx и т.п.) или деплой бэкенда отдельно; для локального просмотра только UI достаточно `preview`, но запросы к API потребуют запущенного сервера на 8787 или соответствующей настройки URL.
-
-## Структура репозитория
-
-- `landing/` — React-приложение (Vite)
-- `landing/server/` — Express API, auth, треки/альбомы, почта, опционально OpenAI
-- `docker-compose.yml` — локальный PostgreSQL + PostGIS для разработки
-
-## Лицензия
-
-Проект в личном/учебном использовании — уточните у автора при распространении.
+- `feat(middleware): add requireAuth and optionalAuth middleware`
+- `feat(services): add tokenService with JWT sign and verify`
+- `feat(services): add passwordService with bcrypt hash and verify`
+- `feat(services): add userService with register, login, getMe, deleteUser`
+- `feat(services): add trackService with getUserTracks, createTrack, deleteTracks, search`
+- `feat(services): add albumService with full albums CRUD and track relations`
+- `feat(controllers): add authController for register, login, logout, me, delete`
+- `feat(controllers): add trackController with upload, stream, delete, search`
+- `feat(controllers): add albumController with CRUD and track management`
+- `feat(controllers): add profileController for private and public profile`
+- `feat(routes): add auth routes for register, login, logout, me, delete`
+- `feat(routes): add track routes for upload, stream, delete, search`
+- `feat(routes): add album routes with full CRUD and track relations`
+- `feat(routes): add profile routes for private and public profile`
+- `refactor(server): restructure index.js with routes, controllers, services`
