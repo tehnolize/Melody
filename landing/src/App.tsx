@@ -45,8 +45,11 @@ function fmtTime(sec: number) {
 
 function splitArtistTitle(name: string) {
 <<<<<<< HEAD
+=======
+<<<<<<< HEAD
   if (!name || typeof name !== 'string') return { artist: 'Unknown', title: 'Unknown' };
 =======
+>>>>>>> origin/main
 >>>>>>> origin/main
   const base = name.replace(/\.mp3$/i, "");
   const parts = base.split(" - ");
@@ -906,9 +909,13 @@ export default function App() {
 
   const currentTrack = currentId ? tracksById.get(currentId) : undefined;
 <<<<<<< HEAD
+  const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file) : { artist: "", title: "" };
+=======
+<<<<<<< HEAD
 const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || currentTrack.title || "") : { artist: "", title: "" };
 =======
   const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file) : { artist: "", title: "" };
+>>>>>>> origin/main
 >>>>>>> origin/main
 
   async function play() {
