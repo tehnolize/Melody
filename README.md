@@ -70,35 +70,35 @@
 ### Установка 
 
 # 1. Клонируйте репозиторий
-```
+```bash
 git clone https://github.com/tehnolize/Melody.git
 cd Melody
 ```
 
 # 2. Установите зависимости
-```
+```bash
 npm install
 ```
 
 # 3. Настройте окружение 
-```
+```bash
 cp .env.example .env
 ```
 
 # Отредактируйте .env (см. раздел ниже)
 
 # 4. Инициализируйте базу данных
-```
+```bash
 npm run migrate
 ```
 
 # 5. Запустите сервер в режиме разработки
-```
+```bash
 npm run dev
 ```
 
 # 6. Для продакшена:
-```
+```bash
 npm start
 ```
 
@@ -119,7 +119,7 @@ npm start
 Создайте файл .env на основе .env.example
 
 ### СЕРВЕР
-```
+```bash
 NODE_ENV=development
 PORT=3000
 API_PREFIX=/api/v1
@@ -127,7 +127,7 @@ CORS_ORIGIN=http://localhost:5173
 ```
 
 ## БАЗА ДАННЫХ (PostgreSQL)
-```
+```bash
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=melody
@@ -138,14 +138,14 @@ DB_POOL_MAX=10
 ```
 
 ## JWT АУТЕНТИФИКАЦИЯ
-```
+```bash
 JWT_SECRET=your_super_secret_key_change_in_production
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 ```
 
 ## EMAIL (восстановление пароля)
-```
+```bash
 SMTP_HOST=smtp.mail.ru
 SMTP_PORT=587
 SMTP_USER=your_email@mail.ru
@@ -154,14 +154,14 @@ EMAIL_FROM=Melody <noreply@melody.app>
 ```
 
 ## ЗАГРУЗКА ФАЙЛОВ
-```
+```bash
 UPLOAD_PATH=./uploads/music
 MAX_FILE_SIZE=52428800
 ALLOWED_FORMATS=mp3,wav,flac
 ```
 
 ## ЛОГИРОВАНИЕ
-```
+```bash
 LOG_LEVEL=info
 LOG_FILE=./logs/app.log
 ```
@@ -179,7 +179,7 @@ LOG_FILE=./logs/app.log
 
 ### API Документация
 ### Базовый URL
-```
+```bash
 http://localhost:3000/api/v1
 ```
 
@@ -226,40 +226,40 @@ http://localhost:3000/api/v1
 🧪 Тестирование
 
 # Запустить все тесты
-```
+```bash
 npm test
 ```
 
 # Запустить с покрытием
-```
+```bash
 npm run test:coverage
 ```
 
 # Запустить только интеграционные тесты
-```
+```bash
 npm run test:integration
 ```
 
 # Запустить тесты авторизации
-```
+```bash
 npm run test:auth
 ```
 
 Ручное тестирование (Postman/cURL)
 # Регистрация
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"StrongPass123","username":"testuser"}'
 ```
 
 # Получение треков с пагинацией
-```
+```bash
 curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
 ```
 
 # Создание плейлиста (с токеном)
-```
+```bash
 curl -X POST http://localhost:3000/api/v1/playlists \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
