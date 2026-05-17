@@ -195,7 +195,7 @@ http://localhost:3000/api/v1
 
 🧪 Тестирование
 
-```bash
+```bash```
 # Запустить все тесты
 npm test
 
@@ -209,7 +209,7 @@ npm run test:integration
 npm run test:auth
 
 Ручное тестирование (Postman/cURL)
-```bash
+```bash```
 # Регистрация
 curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d {"email": "test@example.com", "password": "StrongPass123", "username": "testuser"}'
 
