@@ -107,55 +107,55 @@ npm run lint            Проверка стиля кода (ESLint)
 
 Создайте файл .env на основе .env.example
 
-# === СЕРВЕ ===
-NODE_ENV=development
-PORT=3000
-API_PREFIX=/api/v1
-CORS_ORIGIN=http://localhost:5173
+### === СЕРВЕР ===
+### NODE_ENV=development
+### PORT=3000
+### API_PREFIX=/api/v1
+### CORS_ORIGIN=http://localhost:5173
 
-# === БАЗА ДАННЫХ (PostgreSQL) ===
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=melody
-DB_USER=postgres
-DB_PASSWORD=your_secure_password
-DB_POOL_MIN=2
-DB_POOL_MAX=10
+### === БАЗА ДАННЫХ (PostgreSQL) ===
+### DB_HOST=localhost
+### DB_PORT=5432
+### DB_NAME=melody
+### DB_USER=postgres
+### DB_PASSWORD=your_secure_password
+### DB_POOL_MIN=2
+### DB_POOL_MAX=10
 
-# === JWT АУТЕНТИФИКАЦИЯ ===
-JWT_SECRET=your_super_secret_key_change_in_production
-JWT_ACCESS_EXPIRES_IN=15m
-JWT_REFRESH_EXPIRES_IN=7d
+### === JWT АУТЕНТИФИКАЦИЯ ===
+### JWT_SECRET=your_super_secret_key_change_in_production
+### JWT_ACCESS_EXPIRES_IN=15m
+### JWT_REFRESH_EXPIRES_IN=7d
 
-# === EMAIL (восстановление пароля) ===
-SMTP_HOST=smtp.mail.ru
-SMTP_PORT=587
-SMTP_USER=your_email@mail.ru
-SMTP_PASS=your_app_password
-EMAIL_FROM=Melody <noreply@melody.app>
+### === EMAIL (восстановление пароля) ===
+### SMTP_HOST=smtp.mail.ru
+### SMTP_PORT=587
+### SMTP_USER=your_email@mail.ru
+### SMTP_PASS=your_app_password
+### EMAIL_FROM=Melody <noreply@melody.app>
 
-# === ЗАГРУЗКА ФАЙЛОВ ===
-UPLOAD_PATH=./uploads/music
-MAX_FILE_SIZE=52428800
-ALLOWED_FORMATS=mp3,wav,flac
+### === ЗАГРУЗКА ФАЙЛОВ ===
+### UPLOAD_PATH=./uploads/music
+### MAX_FILE_SIZE=52428800
+### ALLOWED_FORMATS=mp3,wav,flac
 
-# === ЛОГИРОВАНИЕ ===
-LOG_LEVEL=info
-LOG_FILE=./logs/app.log
+### === ЛОГИРОВАНИЕ ===
+### LOG_LEVEL=info
+### LOG_FILE=./logs/app.log
 
-🌿 Структура веток
+### 🌿 Структура веток
 
-Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
-|  main                                     | ✅ Стабильная версия, рабочий сайт | |
+### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
+|  main                                     | ✅ Стабильная версия, рабочий сайт | 
 |  feature/PROJ-004-database-changes        | 🗄️ Схема БД, модели, миграции      |
 |  feature/PROJ-005-server-crud             | ⚙️ Серверная логика, CRUD API      |
 |  feature/PROJ-006-backend-postgresql-auth | 🔐 Авторизация, JWT, роли          |
 |  feature/PROJ-007-music-core-profile      | 🎵 Плеер, плейлисты, профиль       |
 
-API Документация
-Базовый URL
-```bash``
-http://localhost:3000/api/v1
+### API Документация
+### Базовый URL
+
+### http://localhost:3000/api/v1
 
 ### Основные эндпоинты
 
@@ -195,7 +195,6 @@ http://localhost:3000/api/v1
 
 🧪 Тестирование
 
-```bash```
 # Запустить все тесты
 npm test
 
@@ -209,12 +208,16 @@ npm run test:integration
 npm run test:auth
 
 Ручное тестирование (Postman/cURL)
-```bash```
 # Регистрация
-curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d {"email": "test@example.com", "password": "StrongPass123", "username": "testuser"}'
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"StrongPass123","username":"testuser"}'
 
 # Получение треков с пагинацией
 curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
 
-# Создание плейлиста с (токеном)
-curl -X POST http://localhost:3000/api/v1/playlists -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ACCESS_TOKEN" -d '{"name":"My Playlist","description":"Test playlist"}'
+# Создание плейлиста (с токеном)
+curl -X POST http://localhost:3000/api/v1/playlists \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{"name":"My Playlist","description":"Test playlist"}'
