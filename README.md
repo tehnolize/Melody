@@ -58,7 +58,7 @@
 
 ## 🗂️ Структура проекта
 
-![alt text](image.png)
+![alt text](image-1.png)
 
 ## 🚀 Быстрый старт
 
