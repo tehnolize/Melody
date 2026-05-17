@@ -69,7 +69,7 @@
 
 ### Установка 
 
-```bash
+```bash```
 # 1. Клонируйте репозиторий
 git clone https://github.com/tehnolize/Melody.git
 cd Melody
@@ -143,18 +143,18 @@ ALLOWED_FORMATS=mp3,wav,flac
 LOG_LEVEL=info
 LOG_FILE=./logs/app.log
 
-### 🌿 Структура веток
+🌿 Структура веток
 
-### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
+Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
 |  main                                     | ✅ Стабильная версия, рабочий сайт | |
 |  feature/PROJ-004-database-changes        | 🗄️ Схема БД, модели, миграции      |
 |  feature/PROJ-005-server-crud             | ⚙️ Серверная логика, CRUD API      |
 |  feature/PROJ-006-backend-postgresql-auth | 🔐 Авторизация, JWT, роли          |
 |  feature/PROJ-007-music-core-profile      | 🎵 Плеер, плейлисты, профиль       |
 
-### API Документация
-### Базовый URL
-```bash
+API Документация
+Базовый URL
+```bash``
 http://localhost:3000/api/v1
 
 ### Основные эндпоинты
