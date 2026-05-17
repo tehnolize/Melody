@@ -58,46 +58,7 @@
 
 ## 🗂️ Структура проекта
 
-Melody/
-├── src/
-│ ├── config/
-│ │ └── database.js # Настройка подключения к БД
-│ ├── controllers/
-│ │ ├── auth.controller.js # Логика авторизации
-│ │ ├── user.controller.js # Профиль пользователя
-│ │ ├── track.controller.js # Работа с треками
-│ │ └── playlist.controller.js # Плейлисты
-│ ├── models/
-│ │ ├── User.js # Модель пользователя
-│ │ ├── Track.js # Модель трека
-│ │ ├── Playlist.js # Модель плейлиста
-│ │ └── index.js # Экспорт всех моделей
-│ ├── routes/
-│ │ ├── auth.routes.js # Маршруты авторизации
-│ │ ├── user.routes.js # Маршруты профиля
-│ │ ├── track.routes.js # Маршруты треков
-│ │ ├── playlist.routes.js # Маршруты плейлистов
-│ │ └── index.js # Сборка всех роутов
-│ ├── middleware/
-│ │ ├── auth.js # Проверка JWT
-│ │ ├── errorHandler.js # Глобальная обработка ошибок
-│ │ ├── validate.js # Валидация запросов
-│ │ └── upload.js # Загрузка файлов
-│ ├── utils/
-│ │ ├── apiResponse.js # Стандартизация ответов
-│ │ ├── logger.js # Настройка логгера
-│ │ └── helpers.js # Вспомогательные функции
-│ └── app.js # Инициализация Express
-├── public/
-│ ├── css/
-│ ├── js/
-│ └── index.html # Главная страница
-├── uploads/ # Папка для загруженных файлов
-├── .env.example # Шаблон переменных окружения
-├── .gitignore # Исключения для Git
-├── package.json # Зависимости и скрипты
-├── server.js # Точка входа в сервер
-└── README.md # Этот файл
+![alt text](image.png)
 
 ## 🚀 Быстрый старт
 
@@ -181,3 +142,79 @@ ALLOWED_FORMATS=mp3,wav,flac
 # === ЛОГИРОВАНИЕ ===
 LOG_LEVEL=info
 LOG_FILE=./logs/app.log
+
+### 🌿 Структура веток
+
+### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
+|  main                                     | ✅ Стабильная версия, рабочий сайт | |
+|  feature/PROJ-004-database-changes        | 🗄️ Схема БД, модели, миграции      |
+|  feature/PROJ-005-server-crud             | ⚙️ Серверная логика, CRUD API      |
+|  feature/PROJ-006-backend-postgresql-auth | 🔐 Авторизация, JWT, роли          |
+|  feature/PROJ-007-music-core-profile      | 🎵 Плеер, плейлисты, профиль       |
+
+### API Документация
+### Базовый URL
+```bash
+http://localhost:3000/api/v1
+
+### Основные эндпоинты
+
+🔐 Авторизация 
+
+|  Метод  |  Эндпоинт      |  Описание              |  Доступ     |
+|  POST   |  /auth/login   |  Вход                  |  Публичный  |
+|  POST   |  /auth/refresh |  Обновление токена     |  Публичный  |
+|  POST   |  /auth/logout  |  Выход                 |  Защищённый |
+|  POST   |  /auth/forgot  |  Запрос сбороса пароля |  Публичный  |
+
+👔 Пользователи
+
+|  Метод  |  Эндопинт          |  Описание             |  Доступ     |
+|  GET    |  /users/me/        |  Получение профиля    |  Защищённый |
+|  PUT    |  /users/me/        |  Обновление профиля   |  Защищённый |
+|  POST   |  /users/avatar/    |  Загрузка аватара     |  Защищённый |
+
+🎶 Треки
+
+|  Метод  |  Эндпоинт       |  Описание                        |  Доступ     |
+|  GET    |  /tracks        |  Список треков (с пагинацией)    |  Публичный  |
+|  GET    |  /tracks/:id    |  Детали трека                    |  Публичный  |
+|  POST   |  /tracks        |  Загрузка трека                  |  Защищённый |
+|  PUT    |  /tracks/:id    |  Редактирование трека            |  Защищенный |
+|  DELETE |  /tracks/:id    |  Удаление трека                  |  Защищённый |
+
+📑 Плейлисты
+
+|  Метод  |  Эндпоинт                       |  Описание                    |  Доступ      |
+|  GET    |  /playlists                     |  Мой плейсты                 |  Защищённый  |
+|  POST   |  /playlists                     |  Создать плейлист            |  Защищённый  |
+|  PUT    |  /playlists/:id                 |  Редактировать плейлист      |  Владелец    |
+|  POST   |  /playlists/:id/tracks          |  Добавить трек  |  Владелец  |  Владелец    |
+|  DELETE |  /playlists/:id/tracks/trackId  |  Удалить трек  |  Владелец  |
+
+
+🧪 Тестирование
+
+```bash
+# Запустить все тесты
+npm test
+
+# Запустить с покрытием
+npm run test:coverage
+
+# Запустить только интеграционные тесты
+npm run test:integration
+
+# Запустить тесты авторизации
+npm run test:auth
+
+Ручное тестирование (Postman/cURL)
+```bash
+# Регистрация
+curl -X POST http://localhost:3000/api/v1/auth/register -H "Content-Type: application/json" -d {"email": "test@example.com", "password": "StrongPass123", "username": "testuser"}'
+
+# Получение треков с пагинацией
+curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
+
+# Создание плейлиста с (токеном)
+curl -X POST http://localhost:3000/api/v1/playlists -H "Content-Type: application/json" -H "Authorization: Bearer YOUR_ACCESS_TOKEN" -d '{"name":"My Playlist","description":"Test playlist"}'
