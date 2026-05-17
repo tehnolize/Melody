@@ -69,99 +69,126 @@
 
 ### Установка 
 
-```bash```
 # 1. Клонируйте репозиторий
+```
 git clone https://github.com/tehnolize/Melody.git
 cd Melody
+```
 
 # 2. Установите зависимости
+```
 npm install
+```
 
 # 3. Настройте окружение 
+```
 cp .env.example .env
+```
 
 # Отредактируйте .env (см. раздел ниже)
 
 # 4. Инициализируйте базу данных
+```
 npm run migrate
+```
 
 # 5. Запустите сервер в режиме разработки
+```
 npm run dev
+```
 
 # 6. Для продакшена:
+```
 npm start
+```
 
 Доступные скрипты (package.json)
 
-Команды                 Описание
-
-npm run dev             Запуск с nodemon (hot-reload)
-npm start               Запуск в продакшен-режиме
-npm run migrate         Применение миграций БД
-npm run migrate:undo    Откат последней миграции
-npm test                Запуск тестов
-npm run test:coverage   Тесты с покрытием
-npm run lint            Проверка стиля кода (ESLint)
+| Команды              | Описание                      |
+|----------------------|-------------------------------|
+|npm run dev           | Запуск с nodemon (hot-reload) |
+|npm start             | Запуск в продакшен-режиме     |
+|npm run migrate       | Применение миграций БД        |
+|npm run migrate:undo  | Откат последней миграции      |
+|npm test              | Запуск тестов                 |
+|npm run test:coverage | Тесты с покрытием             |
+|npm run lint          | Проверка стиля кода (ESLint)  |
 
 ⚙️ Пемеренные окружения 
 
 Создайте файл .env на основе .env.example
 
-### === СЕРВЕР ===
-### NODE_ENV=development
-### PORT=3000
-### API_PREFIX=/api/v1
-### CORS_ORIGIN=http://localhost:5173
+### СЕРВЕР
+```
+NODE_ENV=development
+PORT=3000
+API_PREFIX=/api/v1
+CORS_ORIGIN=http://localhost:5173
+```
 
-### === БАЗА ДАННЫХ (PostgreSQL) ===
-### DB_HOST=localhost
-### DB_PORT=5432
-### DB_NAME=melody
-### DB_USER=postgres
-### DB_PASSWORD=your_secure_password
-### DB_POOL_MIN=2
-### DB_POOL_MAX=10
+## БАЗА ДАННЫХ (PostgreSQL)
+```
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=melody
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+```
 
-### === JWT АУТЕНТИФИКАЦИЯ ===
-### JWT_SECRET=your_super_secret_key_change_in_production
-### JWT_ACCESS_EXPIRES_IN=15m
-### JWT_REFRESH_EXPIRES_IN=7d
+## JWT АУТЕНТИФИКАЦИЯ
+```
+JWT_SECRET=your_super_secret_key_change_in_production
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+```
 
-### === EMAIL (восстановление пароля) ===
-### SMTP_HOST=smtp.mail.ru
-### SMTP_PORT=587
-### SMTP_USER=your_email@mail.ru
-### SMTP_PASS=your_app_password
-### EMAIL_FROM=Melody <noreply@melody.app>
+## EMAIL (восстановление пароля)
+```
+SMTP_HOST=smtp.mail.ru
+SMTP_PORT=587
+SMTP_USER=your_email@mail.ru
+SMTP_PASS=your_app_password
+EMAIL_FROM=Melody <noreply@melody.app>
+```
 
-### === ЗАГРУЗКА ФАЙЛОВ ===
-### UPLOAD_PATH=./uploads/music
-### MAX_FILE_SIZE=52428800
-### ALLOWED_FORMATS=mp3,wav,flac
+## ЗАГРУЗКА ФАЙЛОВ
+```
+UPLOAD_PATH=./uploads/music
+MAX_FILE_SIZE=52428800
+ALLOWED_FORMATS=mp3,wav,flac
+```
 
-### === ЛОГИРОВАНИЕ ===
-### LOG_LEVEL=info
-### LOG_FILE=./logs/app.log
+## ЛОГИРОВАНИЕ
+```
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+```
 
 ### 🌿 Структура веток
 
 ### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
-|  main                                     | ✅ Стабильная версия, рабочий сайт | 
-|  feature/PROJ-004-database-changes        | 🗄️ Схема БД, модели, миграции      |
-|  feature/PROJ-005-server-crud             | ⚙️ Серверная логика, CRUD API      |
-|  feature/PROJ-006-backend-postgresql-auth | 🔐 Авторизация, JWT, роли          |
-|  feature/PROJ-007-music-core-profile      | 🎵 Плеер, плейлисты, профиль       |
+|  Ветка                                    |  Описание                           |
+|-------------------------------------------|-------------------------------------|
+|  main                                     | Стабильная версия, рабочий сайт     |
+|  feature/PROJ-004-database-changes        | Схема БД, модели, миграции          |
+|  feature/PROJ-005-server-crud             | Серверная логика, CRUD API          |
+|  feature/PROJ-006-backend-postgresql-auth | Авторизация, JWT, роли              |
+|  feature/PROJ-007-music-core-profile      | Плеер, плейлисты, профиль           |  
 
 ### API Документация
 ### Базовый URL
-
-### http://localhost:3000/api/v1
+```
+http://localhost:3000/api/v1
+```
 
 ### Основные эндпоинты
 
 🔐 Авторизация 
 
 |  Метод  |  Эндпоинт      |  Описание              |  Доступ     |
+|---------|----------------|------------------------|-------------|
 |  POST   |  /auth/login   |  Вход                  |  Публичный  |
 |  POST   |  /auth/refresh |  Обновление токена     |  Публичный  |
 |  POST   |  /auth/logout  |  Выход                 |  Защищённый |
@@ -170,6 +197,7 @@ npm run lint            Проверка стиля кода (ESLint)
 👔 Пользователи
 
 |  Метод  |  Эндопинт          |  Описание             |  Доступ     |
+|---------|--------------------|-----------------------|-------------|
 |  GET    |  /users/me/        |  Получение профиля    |  Защищённый |
 |  PUT    |  /users/me/        |  Обновление профиля   |  Защищённый |
 |  POST   |  /users/avatar/    |  Загрузка аватара     |  Защищённый |
@@ -177,6 +205,7 @@ npm run lint            Проверка стиля кода (ESLint)
 🎶 Треки
 
 |  Метод  |  Эндпоинт       |  Описание                        |  Доступ     |
+|---------|-----------------|----------------------------------|-------------|
 |  GET    |  /tracks        |  Список треков (с пагинацией)    |  Публичный  |
 |  GET    |  /tracks/:id    |  Детали трека                    |  Публичный  |
 |  POST   |  /tracks        |  Загрузка трека                  |  Защищённый |
@@ -186,6 +215,7 @@ npm run lint            Проверка стиля кода (ESLint)
 📑 Плейлисты
 
 |  Метод  |  Эндпоинт                       |  Описание                    |  Доступ      |
+|---------|---------------------------------|------------------------------|--------------|
 |  GET    |  /playlists                     |  Мой плейсты                 |  Защищённый  |
 |  POST   |  /playlists                     |  Создать плейлист            |  Защищённый  |
 |  PUT    |  /playlists/:id                 |  Редактировать плейлист      |  Владелец    |
@@ -196,28 +226,42 @@ npm run lint            Проверка стиля кода (ESLint)
 🧪 Тестирование
 
 # Запустить все тесты
+```
 npm test
+```
 
 # Запустить с покрытием
+```
 npm run test:coverage
+```
 
 # Запустить только интеграционные тесты
+```
 npm run test:integration
+```
 
 # Запустить тесты авторизации
+```
 npm run test:auth
+```
 
 Ручное тестирование (Postman/cURL)
 # Регистрация
+```
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"StrongPass123","username":"testuser"}'
+```
 
 # Получение треков с пагинацией
+```
 curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
+```
 
 # Создание плейлиста (с токеном)
+```
 curl -X POST http://localhost:3000/api/v1/playlists \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -d '{"name":"My Playlist","description":"Test playlist"}'
+```
