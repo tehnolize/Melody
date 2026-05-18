@@ -52,13 +52,12 @@ npm run dev
 
 | Что нужно | Ссылка |
 |-----------|--------|
-| **Node.js** v18 или выше | [nodejs.org](https://nodejs.org/) |
-| **Git** | [git-scm.com](https://git-scm.com/) |
-| **Docker Desktop** | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
+| Node.js v18 или выше | [nodejs.org](https://nodejs.org/) |
+| Git | [git-scm.com](https://git-scm.com/) |
+| Docker Desktop | [docker.com/products/docker-desktop](https://www.docker.com/products/docker-desktop/) |
 
-**Проверка версий** (в терминале):
+### Проверка версий (в терминале):
 
-```powershell
 node -v
 npm -v
 git --version
@@ -110,7 +109,7 @@ ports:
 
 **`landing/server/.env`**
 
-```env
+```bash
 # Без конфликта портов
 DATABASE_URL=postgresql://melody:melody@localhost:5432/melody
 
@@ -235,7 +234,7 @@ npm run dev
 
 Создайте файл `landing/server/.env`:
 
-```dotenv
+
 # База данных
 DATABASE_URL=postgresql://melody:melody@localhost:5432/melody
 
@@ -334,10 +333,11 @@ albums (many) ←→ tracks (many)  через album_tracks
 import { createPool, initDb } from './db/init.js';
 const pool = createPool(process.env.DATABASE_URL);
 await initDb(pool);
+```
 
 ## Запуск базы данных
 
-```bash
+```
 # Запустить PostgreSQL через Docker
 docker compose up -d db
 
@@ -368,9 +368,6 @@ node index.js
 [DB] Schema initialized
 [SERVER] Running on http://localhost:8787
 ```
-
----
-
 
 ## Коммиты ветки
 
