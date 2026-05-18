@@ -12,6 +12,14 @@
 
 ---
 
+## Что изменилось в этой ветке
+* Создан файл landing/server/db/schema.sql - полная SQL-схема всех таблиц, индексов и ограничений
+* Создан файл landing/server/db/pool.js - фабрика пула соединений PosgreSQL
+* Создан файл landing/server/db/init.js - функция инициализации БД (читает и применяет schema.sql)
+* Обновлен DB_STRUCTURE.md - документация по сущностям и связям
+
+---
+
 # Запуск 
 ```bash
 git checkout feature/PROJ-007-music-core-profile
@@ -358,11 +366,9 @@ node index.js
 ```
 
 Ожидаемый вывод:
-```
->>>>>>> origin/main
+```bash
 [DB] Schema initialized
 [SERVER] Running on http://localhost:8787
->>>>>>> origin/main
 ```
 
 ---
@@ -455,7 +461,6 @@ curl -X POST http://localhost:8787/api/auth/register \
 curl -X POST http://localhost:8787/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@test.com","password":"Test123456789"}'
->>>>>>> origin/main
 ```
 
 ---
@@ -546,4 +551,3 @@ site/
 - `feat(upload): сохранение метаданных файла в таблицу tracks`
 - `feat(upload): валидация типа файла и обработка ошибок загрузки`
 - `chore(env): настройка переменных окружения через dotenv`
->>>>>>> origin/main
