@@ -2,7 +2,7 @@
 # Задание 4 — Структура базы данных
 
 ## Ветка: `feature/PROJ-004-database-structure`
-=======
+
 # MELODY — инструкция по запуску
 
 ## Описание 
@@ -181,14 +181,12 @@ node index.js
 **Ожидаемый вывод:**
 
 ```text
-=======
 # Задание 6 — Backend, PostgreSQL, аутентификация, загрузка mp3
 
 ## Ветка: `feature/PROJ-006-backend-postgresql-auth`
 
 ## Описание 
 Векта реализует систему безопасности: регистрация, вход, JWT-токены, восстановление пароля и защита маршрутов.
->>>>>>> origin/main
 
 ---
 
@@ -221,7 +219,7 @@ landing/server/db/
 ├── pool.js      — создание пула соединений PostgreSQL
 └── init.js      — инициализация БД при запуске сервера
 DB_STRUCTURE.md  — документация структуры БД
-=======
+
 Настроено подключение к PostgreSQL, реализована аутентификация через JWT + cookie, настроена загрузка mp3-файлов через multer.
 
 ---
@@ -336,7 +334,7 @@ albums (many) ←→ tracks (many)  через album_tracks
 import { createPool, initDb } from './db/init.js';
 const pool = createPool(process.env.DATABASE_URL);
 await initDb(pool);
-=======
+
 ## Запуск базы данных
 
 ```bash
@@ -380,7 +378,7 @@ node index.js
 - `feat(db): add pool.js for PostgreSQL connection`
 - `feat(db): add init.js to apply schema on server startup`
 - `docs(db): add database structure description with tables and relations`
-=======
+
 
 ## 8. Запуск клиента
 
@@ -423,7 +421,7 @@ curl http://localhost:8787/api/popular
 
 ```json
 {"items":[...]}
-=======
+
 ## Аутентификация
 
 - Регистрация: хеширование пароля bcrypt + JWT в httpOnly cookie
@@ -538,7 +536,6 @@ site/
 | `GET` | `/music/:ownerId/:filename` |
 
 ---
-=======
 ## Коммиты ветки
 
 - `feat(db): подключение PostgreSQL через переменную DATABASE_URL`
