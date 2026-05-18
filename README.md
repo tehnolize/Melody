@@ -1,18 +1,5 @@
 # Melody - Музыкальный веб-сервис
 
-# Платформа для прослушивания музыки, управления плейлистами и персонализации контента.
-
----
-
-## Оглавление
-- [О проекте](#-o-проекте)
-- [Технологии](#-технологии)
-- [Структура проекта](#-структура-проекта)
-- [Быстрый старт](#-быстрый-старт)
-- [Переменные окружения](#-структура-веток)
-- [API Документация](#-api-документация)
-- [Тестирование](#-тестирование)
-- [Вкладка в проект](#-вклад-в-проект)
 
 ---
 
@@ -85,12 +72,13 @@ npm install
 cp .env.example .env
 ```
 
-# Отредактируйте .env (см. раздел ниже)
+
 
 # 4. Инициализируйте базу данных
 ```bash
 npm run migrate
 ```
+
 
 # 5. Запустите сервер в режиме разработки
 ```bash
@@ -137,7 +125,6 @@ DB_POOL_MIN=2
 DB_POOL_MAX=10
 ```
 
-## JWT АУТЕНТИФИКАЦИЯ
 ```bash
 JWT_SECRET=your_super_secret_key_change_in_production
 JWT_ACCESS_EXPIRES_IN=15m
@@ -152,38 +139,6 @@ SMTP_USER=your_email@mail.ru
 SMTP_PASS=your_app_password
 EMAIL_FROM=Melody <noreply@melody.app>
 ```
-
-## ЗАГРУЗКА ФАЙЛОВ
-```bash
-UPLOAD_PATH=./uploads/music
-MAX_FILE_SIZE=52428800
-ALLOWED_FORMATS=mp3,wav,flac
-```
-
-## ЛОГИРОВАНИЕ
-```bash
-LOG_LEVEL=info
-LOG_FILE=./logs/app.log
-```
-
-### 🌿 Структура веток
-
-### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
-|  Ветка                                    |  Описание                           |
-|-------------------------------------------|-------------------------------------|
-|  main                                     | Стабильная версия, рабочий сайт     |
-|  feature/PROJ-004-database-changes        | Схема БД, модели, миграции          |
-|  feature/PROJ-005-server-crud             | Серверная логика, CRUD API          |
-|  feature/PROJ-006-backend-postgresql-auth | Авторизация, JWT, роли              |
-|  feature/PROJ-007-music-core-profile      | Плеер, плейлисты, профиль           |  
-
-### API Документация
-### Базовый URL
-```bash
-http://localhost:3000/api/v1
-```
-
-### Основные эндпоинты
 
 🔐 Авторизация 
 
@@ -240,7 +195,6 @@ npm run test:coverage
 npm run test:integration
 ```
 
-# Запустить тесты авторизации
 ```bash
 npm run test:auth
 ```
@@ -250,18 +204,10 @@ npm run test:auth
 ```bash
 curl -X POST http://localhost:3000/api/v1/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"StrongPass123","username":"testuser"}'
+
 ```
 
 # Получение треков с пагинацией
 ```bash
 curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
-```
-
-# Создание плейлиста (с токеном)
-```bash
-curl -X POST http://localhost:3000/api/v1/playlists \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -d '{"name":"My Playlist","description":"Test playlist"}'
 ```
