@@ -8,3 +8,4 @@ Decision Log - https://app.weeek.net/s/decision-log-document-OTM0ODc5fGExOTAxMDQ
 MVP Scope - https://app.weeek.net/s/mvp-scope-document-OTM0ODc5fGExOTAxMDU5LWZlMTUtNDIzOC05MjU4LTE0Yzk4MzAwMTE0YQ==
 Design Solutions/UX - https://app.weeek.net/s/design-solutions-ux-document-OTM0ODc5fGExOTAxMTVhLTEzZmUtNDY4OS05ODAyLWUwNzU1ZDRmOTAxMQ==
 Requirements Analysis - https://app.weeek.net/s/requirements-analysis-document-OTM0ODc5fGExNzVjNWQwLWRiODUtNDBmOS1iZDVhLTA4YzdhMWY3YTcwYQ==
+GIT Agreements - https://app.weeek.net/s/git-agreements-document-OTM0ODc5fGExOTAxNTRmLWI1OGYtNDM2NC1iYzJjLWUxNGMzM2EzNWRlNw==
