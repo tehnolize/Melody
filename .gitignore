@@ -1,0 +1,10 @@
+node_modules/
+landing/node_modules/
+landing/server/node_modules/
+landing/dist/
+landing/server/uploads/
+landing/.env.local
+landing/server/.env
+.DS_Store
+landing/.DS_Store
+landing/server/.DS_Store
