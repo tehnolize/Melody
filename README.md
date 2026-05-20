@@ -220,3 +220,92 @@ LOG_FILE=./logs/app.log
 |  feature/PROJ-005-server-crud             | Серверная логика, CRUD API          |
 |  feature/PROJ-006-backend-postgresql-auth | Авторизация, JWT, роли              |
 |  feature/PROJ-007-music-core-profile      | Плеер, плейлисты, профиль           |  
+
+### API Документация
+### Базовый URL
+```bash
+http://localhost:3000/api/v1
+```
+
+### Основные эндпоинты
+
+🔐 Авторизация 
+
+|  Метод  |  Эндпоинт      |  Описание              |  Доступ     |
+|---------|----------------|------------------------|-------------|
+|  POST   |  /auth/login   |  Вход                  |  Публичный  |
+|  POST   |  /auth/refresh |  Обновление токена     |  Публичный  |
+|  POST   |  /auth/logout  |  Выход                 |  Защищённый |
+|  POST   |  /auth/forgot  |  Запрос сбороса пароля |  Публичный  |
+
+👔 Пользователи
+
+|  Метод  |  Эндопинт          |  Описание             |  Доступ     |
+|---------|--------------------|-----------------------|-------------|
+|  GET    |  /users/me/        |  Получение профиля    |  Защищённый |
+|  PUT    |  /users/me/        |  Обновление профиля   |  Защищённый |
+|  POST   |  /users/avatar/    |  Загрузка аватара     |  Защищённый |
+
+🎶 Треки
+
+|  Метод  |  Эндпоинт       |  Описание                        |  Доступ     |
+|---------|-----------------|----------------------------------|-------------|
+|  GET    |  /tracks        |  Список треков (с пагинацией)    |  Публичный  |
+|  GET    |  /tracks/:id    |  Детали трека                    |  Публичный  |
+|  POST   |  /tracks        |  Загрузка трека                  |  Защищённый |
+|  PUT    |  /tracks/:id    |  Редактирование трека            |  Защищенный |
+|  DELETE |  /tracks/:id    |  Удаление трека                  |  Защищённый |
+
+📑 Плейлисты
+
+|  Метод  |  Эндпоинт                       |  Описание                    |  Доступ      |
+|---------|---------------------------------|------------------------------|--------------|
+|  GET    |  /playlists                     |  Мой плейсты                 |  Защищённый  |
+|  POST   |  /playlists                     |  Создать плейлист            |  Защищённый  |
+|  PUT    |  /playlists/:id                 |  Редактировать плейлист      |  Владелец    |
+|  POST   |  /playlists/:id/tracks          |  Добавить трек  |  Владелец  |  Владелец    |
+|  DELETE |  /playlists/:id/tracks/trackId  |  Удалить трек  |  Владелец  |
+
+
+🧪 Тестирование
+
+# Запустить все тесты
+```bash
+npm test
+```
+
+# Запустить с покрытием
+```bash
+npm run test:coverage
+```
+
+# Запустить только интеграционные тесты
+```bash
+npm run test:integration
+```
+
+# Запустить тесты авторизации
+```bash
+npm run test:auth
+```
+
+Ручное тестирование (Postman/cURL)
+# Регистрация
+```bash
+curl -X POST http://localhost:3000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"StrongPass123","username":"testuser"}'
+```
+
+# Получение треков с пагинацией
+```bash
+curl "http://localhost:3000/api/v1/tracks?limit=10&page=1&sort=-createdAt"
+```
+
+# Создание плейлиста (с токеном)
+```bash
+curl -X POST http://localhost:3000/api/v1/playlists \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -d '{"name":"My Playlist","description":"Test playlist"}'
+```
