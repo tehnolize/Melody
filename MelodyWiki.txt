@@ -1,7 +1,7 @@
 Ссылки на разделы базы знаний в WEEEK:
 
 Home - https://app.weeek.net/s/home-document-OTM0ODc5fGExOTAwZGYzLTZkYjgtNGMxYi05YTI2LTQ5MTQ4ZWY2MzNmZQ==
-Team - https://app.weeek.net/ws/934879/kb/10?sionnapshot=a15ff00d-3d5d-4633-bc42-6165637feccb
+Team - https://app.weeek.net/s/team-document-OTM0ODc5fGExOTAwZWYzLTI3ZGEtNDQxYi1hYjY4LWU3MGFlYzkxOGViZg==
 Glossary - https://app.weeek.net/ws/934879/kb/11?snapshot=a15ff3a6-ec79-4686-ac73-773728bfd8bb
 Onboarding - https://app.weeek.net/ws/934879/kb/7?snapshot=a15fe238-b4e6-4e19-b2f5-8bd872b40ab9
 Decision Log - https://app.weeek.net/ws/934879/kb/12?snapshot=a16004ac-4544-4780-9989-00bc74cca646
