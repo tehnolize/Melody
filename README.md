@@ -157,3 +157,66 @@ npm start
 |npm test              | Запуск тестов                 |
 |npm run test:coverage | Тесты с покрытием             |
 |npm run lint          | Проверка стиля кода (ESLint)  |
+
+⚙️ Пемеренные окружения 
+
+Создайте файл .env на основе .env.example
+
+### СЕРВЕР
+```bash
+NODE_ENV=development
+PORT=3000
+API_PREFIX=/api/v1
+CORS_ORIGIN=http://localhost:5173
+```
+
+## БАЗА ДАННЫХ (PostgreSQL)
+```bash
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=melody
+DB_USER=postgres
+DB_PASSWORD=your_secure_password
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+```
+
+## JWT АУТЕНТИФИКАЦИЯ
+```bash
+JWT_SECRET=your_super_secret_key_change_in_production
+JWT_ACCESS_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+```
+
+## EMAIL (восстановление пароля)
+```bash
+SMTP_HOST=smtp.mail.ru
+SMTP_PORT=587
+SMTP_USER=your_email@mail.ru
+SMTP_PASS=your_app_password
+EMAIL_FROM=Melody <noreply@melody.app>
+```
+
+## ЗАГРУЗКА ФАЙЛОВ
+```bash
+UPLOAD_PATH=./uploads/music
+MAX_FILE_SIZE=52428800
+ALLOWED_FORMATS=mp3,wav,flac
+```
+
+## ЛОГИРОВАНИЕ
+```bash
+LOG_LEVEL=info
+LOG_FILE=./logs/app.log
+```
+
+### 🌿 Структура веток
+
+### Проект использует GitHub Flow. Все изменения вносятся через feature-веток:
+|  Ветка                                    |  Описание                           |
+|-------------------------------------------|-------------------------------------|
+|  main                                     | Стабильная версия, рабочий сайт     |
+|  feature/PROJ-004-database-changes        | Схема БД, модели, миграции          |
+|  feature/PROJ-005-server-crud             | Серверная логика, CRUD API          |
+|  feature/PROJ-006-backend-postgresql-auth | Авторизация, JWT, роли              |
+|  feature/PROJ-007-music-core-profile      | Плеер, плейлисты, профиль           |  
