@@ -9,6 +9,13 @@ const COOKIE_OPTS = {
   path: '/',
 };
 
+/**
+ * Registers a new user.
+ *
+ * @param {Object} req - Express request object (includes req.pool, req.body).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 export async function register(req, res) {
   try {
     const { user, token } = await registerUser(req.pool, req.body);
@@ -19,6 +26,13 @@ export async function register(req, res) {
   }
 }
 
+/**
+ * Logs in an existing user.
+ *
+ * @param {Object} req - Express request object (includes req.pool, req.body).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 export async function login(req, res) {
   try {
     const { user, token } = await loginUser(req.pool, req.body);
@@ -29,11 +43,25 @@ export async function login(req, res) {
   }
 }
 
+/**
+ * Logs out the user by clearing the token cookie.
+ *
+ * @param {Object} _req - Express request object (unused).
+ * @param {Object} res - Express response object.
+ * @returns {void}
+ */
 export function logout(_req, res) {
   res.clearCookie('token', { path: '/' });
   res.json({ ok: true });
 }
 
+/**
+ * Retrieves the authenticated user's profile.
+ *
+ * @param {Object} req - Express request object (includes req.pool, req.userId).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 export async function me(req, res) {
   try {
     const user = await getMe(req.pool, req.userId);
@@ -43,10 +71,19 @@ export async function me(req, res) {
   }
 }
 
+/**
+ * Deletes the authenticated user's account and removes associated uploaded files.
+ *
+ * @param {Object} req - Express request object (includes req.pool, req.userId, req.body, req.uploadsRoot).
+ * @param {Object} res - Express response object.
+ * @returns {Promise<void>}
+ */
 export async function deleteAccount(req, res) {
   try {
     const password = String(req.body?.password || '');
-    if (!password) return res.status(400).json({ error: 'password_required' });
+    if (!password) {
+      return res.status(400).json({ error: 'password_required' });
+    }
 
     const uploadsRoot = req.uploadsRoot;
     const userDir = path.join(uploadsRoot, req.userId);
