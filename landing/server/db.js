@@ -1,22 +1,29 @@
-import pg from "pg";
+import pg from 'pg';
 
 const { Pool } = pg;
 
 /**
- * @param {string} connectionString
+ * Создаёт пул подключений к PostgreSQL.
+ *
+ * @param {string} connectionString - Строка подключения к базе данных.
+ * @returns {import('pg').Pool} Пул подключений.
  */
 export function createPool(connectionString) {
   return new Pool({ connectionString });
 }
 
 /**
- * @param {import("pg").Pool} pool
+ * Инициализирует базу данных: создаёт таблицы и индексы.
+ *
+ * @param {import('pg').Pool} pool - Пул подключений для выполнения запросов.
+ * @returns {Promise<void>} Промис, который разрешается после завершения инициализации.
  */
 export async function initDb(pool) {
   try {
-    await pool.query(`CREATE EXTENSION IF NOT EXISTS postgis`);
+    await pool.query('CREATE EXTENSION IF NOT EXISTS postgis');
   } catch {
-    /* PostGIS не обязателен: в «голом» PostgreSQL для Windows расширение часто ставят отдельно (Stack Builder / Docker). */
+    // PostGIS не обязателен: в «голом» PostgreSQL для Windows расширение часто
+    // ставят отдельно (Stack Builder / Docker).
   }
 
   await pool.query(`
@@ -40,7 +47,7 @@ export async function initDb(pool) {
       `CREATE UNIQUE INDEX IF NOT EXISTS idx_users_display_name_lower ON users (lower(display_name))`
     );
   } catch {
-    /* ignore */
+    // Игнорируем ошибку, если индекс не создался (например, из-за дубликатов).
   }
 
   await pool.query(`
@@ -54,8 +61,8 @@ export async function initDb(pool) {
     )
   `);
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks (lower(title))`);
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_tracks_user ON tracks (user_id)`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_tracks_title_lower ON tracks (lower(title))');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_tracks_user ON tracks (user_id)');
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS albums (
@@ -75,5 +82,5 @@ export async function initDb(pool) {
     )
   `);
 
-  await pool.query(`CREATE INDEX IF NOT EXISTS idx_albums_user ON albums (user_id)`);
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_albums_user ON albums (user_id)');
 }
