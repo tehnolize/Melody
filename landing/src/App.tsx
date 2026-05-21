@@ -1,7 +1,12 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-type User = { id: string; email: string; displayName: string };
-type Track = {
+interface User {
+  id: string;
+  email: string;
+  displayName: string;
+}
+
+interface Track {
   id: string;
   file: string;
   title: string;
@@ -9,21 +14,48 @@ type Track = {
   ownerId?: string;
   ownerName?: string;
   owned?: boolean;
-};
-type SearchHit = { track_id: string; title: string; owner_id: string; owner_name: string };
-type AlbumRow = { id: string; name: string; created_at: string; track_count: number };
-
-async function api(path: string, init?: RequestInit) {
-  return fetch(path, { ...init, credentials: "include" });
 }
-type PopularItem = { rank: number; title: string; artist: string; url: string };
-type ChatMsg = { from: "user" | "bot"; text: string; t: number };
+
+interface SearchHit {
+  track_id: string;
+  title: string;
+  owner_id: string;
+  owner_name: string;
+}
+
+interface AlbumRow {
+  id: string;
+  name: string;
+  created_at: string;
+  track_count: number;
+}
+
+async function api(path: string, init?: RequestInit): Promise<Response> {
+  return fetch(path, { ...init, credentials: 'include' });
+}
+
+interface PopularItem {
+  rank: number;
+  title: string;
+  artist: string;
+  url: string;
+}
+
+interface ChatMsg {
+  from: 'user' | 'bot';
+  text: string;
+  t: number;
+}
 
 const log = {
-  info: (msg: string, data?: any) => console.log(`%c[INFO]%c ${msg}`, 'color: #00d4ff; font-weight: bold', 'color: inherit', data || ''),
-  success: (msg: string, data?: any) => console.log(`%c[SUCCESS]%c ${msg}`, 'color: #00d38a; font-weight: bold', 'color: inherit', data || ''),
-  error: (msg: string, err?: any) => console.error(`%c[ERROR]%c ${msg}`, 'color: #ff4444; font-weight: bold', 'color: inherit', err || ''),
-  warn: (msg: string, data?: any) => console.warn(`%c[WARN]%c ${msg}`, 'color: #ffaa00; font-weight: bold', 'color: inherit', data || ''),
+  info: (msg: string, data?: any) =>
+    console.log(`%c[INFO]%c ${msg}`, 'color: #00d4ff; font-weight: bold', 'color: inherit', data || ''),
+  success: (msg: string, data?: any) =>
+    console.log(`%c[SUCCESS]%c ${msg}`, 'color: #00d38a; font-weight: bold', 'color: inherit', data || ''),
+  error: (msg: string, err?: any) =>
+    console.error(`%c[ERROR]%c ${msg}`, 'color: #ff4444; font-weight: bold', 'color: inherit', err || ''),
+  warn: (msg: string, data?: any) =>
+    console.warn(`%c[WARN]%c ${msg}`, 'color: #ffaa00; font-weight: bold', 'color: inherit', data || ''),
 };
 
 function safeJson<T>(key: string, fallback: T): T {
@@ -36,36 +68,29 @@ function safeJson<T>(key: string, fallback: T): T {
   }
 }
 
-function fmtTime(sec: number) {
-  if (!Number.isFinite(sec) || sec < 0) return "0:00";
+function fmtTime(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00';
   const m = Math.floor(sec / 60);
   const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, "0")}`;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-function splitArtistTitle(name: string) {
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-  if (!name || typeof name !== 'string') return { artist: 'Unknown', title: 'Unknown' };
-=======
->>>>>>> origin/main
->>>>>>> origin/main
-  const base = name.replace(/\.mp3$/i, "");
-  const parts = base.split(" - ");
+function splitArtistTitle(name: string): { artist: string; title: string } {
+  const base = name.replace(/\.mp3$/i, '');
+  const parts = base.split(' - ');
   if (parts.length >= 2) {
     const artist = parts[0].trim();
-    const title = parts.slice(1).join(" - ").trim();
+    const title = parts.slice(1).join(' - ').trim();
     return { artist, title };
   }
-  return { artist: "Unknown", title: base.trim() };
+  return { artist: 'Unknown', title: base.trim() };
 }
 
-function clamp(n: number, a: number, b: number) {
+function clamp(n: number, a: number, b: number): number {
   return Math.max(a, Math.min(b, n));
 }
 
-type VirtualListProps<T> = {
+interface VirtualListProps<T> {
   items: T[];
   itemHeight: number;
   overscan?: number;
@@ -73,7 +98,7 @@ type VirtualListProps<T> = {
   renderItem: (item: T, index: number) => React.ReactNode;
   containerClassName?: string;
   containerStyle?: React.CSSProperties;
-};
+}
 
 function VirtualList<T>({
   items,
@@ -96,13 +121,13 @@ function VirtualList<T>({
     updateView();
 
     const onScroll = () => setScrollTop(el.scrollTop || 0);
-    el.addEventListener("scroll", onScroll, { passive: true });
+    el.addEventListener('scroll', onScroll, { passive: true });
 
     const ro = new ResizeObserver(() => updateView());
     ro.observe(el);
 
     return () => {
-      el.removeEventListener("scroll", onScroll);
+      el.removeEventListener('scroll', onScroll);
       ro.disconnect();
     };
   }, []);
@@ -115,19 +140,19 @@ function VirtualList<T>({
   const topPad = start * itemHeight;
   const bottomPad = Math.max(0, total - end * itemHeight);
 
-  const gap = (containerStyle && typeof containerStyle.gap === "number" ? (containerStyle.gap as number) : 10) as number;
+  const gap = (containerStyle && typeof containerStyle.gap === 'number' ? (containerStyle.gap as number) : 10) as number;
 
   return (
     <div
       ref={scrollerRef}
       className={containerClassName}
       style={{
-        overflowY: "auto",
-        display: "block",
+        overflowY: 'auto',
+        display: 'block',
         ...containerStyle,
       }}
     >
-      <div style={{ paddingTop: topPad, paddingBottom: bottomPad, display: "flex", flexDirection: "column", gap }}>
+      <div style={{ paddingTop: topPad, paddingBottom: bottomPad, display: 'flex', flexDirection: 'column', gap }}>
         {items.slice(start, end).map((it, localIdx) => {
           const idx = start + localIdx;
           const key = getKey ? getKey(it, idx) : idx;
@@ -138,7 +163,8 @@ function VirtualList<T>({
   );
 }
 
-export default function App() {
+/** Главный компонент приложения Melody. */
+export function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -153,100 +179,97 @@ export default function App() {
   const [tracks, setTracks] = useState<Track[]>([]);
   const tracksById = useMemo(() => new Map(tracks.map((t) => [t.id, t])), [tracks]);
 
-  const [queue, setQueue] = useState<string[]>(() => safeJson("mw_queue", []));
-  const [currentId, setCurrentId] = useState<string>(() => localStorage.getItem("mw_currentId") || "");
+  const [queue, setQueue] = useState<string[]>(() => safeJson('mw_queue', []));
+  const [currentId, setCurrentId] = useState<string>(() => localStorage.getItem('mw_currentId') || '');
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
 
-  const [curTime, setCurTime] = useState<number>(() => Number(localStorage.getItem("mw_curTime") || "0"));
+  const [curTime, setCurTime] = useState<number>(() => Number(localStorage.getItem('mw_curTime') || '0'));
   const [duration, setDuration] = useState<number>(0);
 
-  const [volume, setVolume] = useState<number>(() => clamp(Number(localStorage.getItem("mw_volume") || "0.85"), 0, 1));
+  const [volume, setVolume] = useState<number>(() => clamp(Number(localStorage.getItem('mw_volume') || '0.85'), 0, 1));
   const [playbackRate, setPlaybackRate] = useState<number>(() =>
-    clamp(Number(localStorage.getItem("mw_rate") || "1"), 0.5, 2)
+    clamp(Number(localStorage.getItem('mw_rate') || '1'), 0.5, 2)
   );
 
-  type LoopMode = "none" | "one" | "all";
+  type LoopMode = 'none' | 'one' | 'all';
   const [loopMode, setLoopMode] = useState<LoopMode>(() => {
-    const v = localStorage.getItem("mw_loopMode");
-    return v === "one" || v === "all" ? v : "none";
+    const v = localStorage.getItem('mw_loopMode');
+    return v === 'one' || v === 'all' ? v : 'none';
   });
 
-  const [bass, setBass] = useState<number>(() => clamp(Number(localStorage.getItem("mw_bass") || "0"), -12, 12));
-  const [mid, setMid] = useState<number>(() => clamp(Number(localStorage.getItem("mw_mid") || "0"), -12, 12));
-  const [treble, setTreble] = useState<number>(() => clamp(Number(localStorage.getItem("mw_treble") || "0"), -12, 12));
+  const [bass, setBass] = useState<number>(() => clamp(Number(localStorage.getItem('mw_bass') || '0'), -12, 12));
+  const [mid, setMid] = useState<number>(() => clamp(Number(localStorage.getItem('mw_mid') || '0'), -12, 12));
+  const [treble, setTreble] = useState<number>(() => clamp(Number(localStorage.getItem('mw_treble') || '0'), -12, 12));
 
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [dragOver, setDragOver] = useState<number | null>(null);
 
   const [popular, setPopular] = useState<PopularItem[]>([]);
-  const [popularError, setPopularError] = useState<string>("");
+  const [popularError, setPopularError] = useState<string>('');
 
-  const [chatOpen, setChatOpen] = useState<boolean>(() => localStorage.getItem("mw_chatOpen") !== "0");
-  const [chat, setChat] = useState<ChatMsg[]>([{ from: "bot", text: "Привет!", t: Date.now() }]);
-  const [chatInput, setChatInput] = useState<string>("");
+  const [chatOpen, setChatOpen] = useState<boolean>(() => localStorage.getItem('mw_chatOpen') !== '0');
+  const [chat, setChat] = useState<ChatMsg[]>([{ from: 'bot', text: 'Привет!', t: Date.now() }]);
+  const [chatInput, setChatInput] = useState<string>('');
 
   const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const [fbName, setFbName] = useState("");
-  const [fbEmail, setFbEmail] = useState("");
-  const [fbText, setFbText] = useState("");
+  const [fbName, setFbName] = useState('');
+  const [fbEmail, setFbEmail] = useState('');
+  const [fbText, setFbText] = useState('');
 
-  const [toast, setToast] = useState<string>("");
+  const [toast, setToast] = useState<string>('');
   const [deleteMode, setDeleteMode] = useState(false);
   const [deleteSelected, setDeleteSelected] = useState<string[]>([]);
   const [deleteBusy, setDeleteBusy] = useState(false);
-  const [copyBusyTrackId, setCopyBusyTrackId] = useState<string>("");
+  const [copyBusyTrackId, setCopyBusyTrackId] = useState<string>('');
 
   const [user, setUser] = useState<User | null>(null);
   const [sessionChecked, setSessionChecked] = useState(false);
-  // Флаг, чтобы начальный запрос GET /api/me не перетирал state,
-  // если пользователь прямо во время загрузки уже нажал "Войти/Регистрация".
   const authSubmitInProgressRef = useRef(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authTab, setAuthTab] = useState<"login" | "register">("login");
-  const [authEmail, setAuthEmail] = useState("");
-  const [authPassword, setAuthPassword] = useState("");
-  const [authDisplayName, setAuthDisplayName] = useState("");
+  const [authTab, setAuthTab] = useState<'login' | 'register'>('login');
+  const [authEmail, setAuthEmail] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
+  const [authDisplayName, setAuthDisplayName] = useState('');
   const [authShowPassword, setAuthShowPassword] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
 
-  const [searchQ, setSearchQ] = useState("");
-  const [searchOwnerQ, setSearchOwnerQ] = useState("");
+  const [searchQ, setSearchQ] = useState('');
+  const [searchOwnerQ, setSearchOwnerQ] = useState('');
   const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
   const [searchBusy, setSearchBusy] = useState(false);
   const [searchOverlayOpen, setSearchOverlayOpen] = useState(false);
   const searchReqIdRef = useRef(0);
 
-  // Поиск только по трекам в текущем списке (в профиле / в очереди).
   const [profileTrackSearchOpen, setProfileTrackSearchOpen] = useState(false);
-  const [profileTrackSearchQ, setProfileTrackSearchQ] = useState("");
+  const [profileTrackSearchQ, setProfileTrackSearchQ] = useState('');
   const [queueTrackSearchOpen, setQueueTrackSearchOpen] = useState(false);
-  const [queueTrackSearchQ, setQueueTrackSearchQ] = useState("");
+  const [queueTrackSearchQ, setQueueTrackSearchQ] = useState('');
 
   const [albums, setAlbums] = useState<AlbumRow[]>([]);
-  const [newAlbumName, setNewAlbumName] = useState("");
-  const [selectedAlbumId, setSelectedAlbumId] = useState<string>("");
-  const [renameAlbumId, setRenameAlbumId] = useState<string>("");
-  const [renameAlbumValue, setRenameAlbumValue] = useState<string>("");
-  const [addDialogTrackId, setAddDialogTrackId] = useState<string>("");
-  const [removeDialogTrackId, setRemoveDialogTrackId] = useState<string>("");
-  const [moveDialogTrackId, setMoveDialogTrackId] = useState<string>("");
-  const [moveFromAlbumId, setMoveFromAlbumId] = useState<string>("");
-  const [moveToAlbumId, setMoveToAlbumId] = useState<string>("");
+  const [newAlbumName, setNewAlbumName] = useState('');
+  const [selectedAlbumId, setSelectedAlbumId] = useState<string>('');
+  const [renameAlbumId, setRenameAlbumId] = useState<string>('');
+  const [renameAlbumValue, setRenameAlbumValue] = useState<string>('');
+  const [addDialogTrackId, setAddDialogTrackId] = useState<string>('');
+  const [removeDialogTrackId, setRemoveDialogTrackId] = useState<string>('');
+  const [moveDialogTrackId, setMoveDialogTrackId] = useState<string>('');
+  const [moveFromAlbumId, setMoveFromAlbumId] = useState<string>('');
+  const [moveToAlbumId, setMoveToAlbumId] = useState<string>('');
   const [profileTracks, setProfileTracks] = useState<Array<{ id: string; title: string; file: string; url: string; albumIds?: string[] }>>([]);
 
   const [deleteAccountOpen, setDeleteAccountOpen] = useState(false);
-  const [deleteAccountPassword, setDeleteAccountPassword] = useState("");
+  const [deleteAccountPassword, setDeleteAccountPassword] = useState('');
 
   const [loopMenuOpen, setLoopMenuOpen] = useState(false);
   const [speedMenuOpen, setSpeedMenuOpen] = useState(false);
   const [eqTypeMenuOpen, setEqTypeMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
-  type EqType = "mirror-bars" | "dual-side" | "symmetric" | "wave" | "circle" | "edges-in" | "vertical" | "pulse" | "spectrum" | "bars-3d" | "spiral" | "waterfall" | "particles";
+  type EqType = 'mirror-bars' | 'dual-side' | 'symmetric' | 'wave' | 'circle' | 'edges-in' | 'vertical' | 'pulse' | 'spectrum' | 'bars-3d' | 'spiral' | 'waterfall' | 'particles';
   const [eqType, setEqType] = useState<EqType>(() => {
-    const v = localStorage.getItem("mw_eqType");
-    const validTypes: EqType[] = ["mirror-bars", "dual-side", "symmetric", "wave", "circle", "edges-in", "vertical", "pulse", "spectrum", "bars-3d", "spiral", "waterfall", "particles"];
-    return validTypes.includes(v as EqType) ? (v as EqType) : "mirror-bars";
+    const v = localStorage.getItem('mw_eqType');
+    const validTypes: EqType[] = ['mirror-bars', 'dual-side', 'symmetric', 'wave', 'circle', 'edges-in', 'vertical', 'pulse', 'spectrum', 'bars-3d', 'spiral', 'waterfall', 'particles'];
+    return validTypes.includes(v as EqType) ? (v as EqType) : 'mirror-bars';
   });
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -256,28 +279,25 @@ export default function App() {
   const eqTypeMenuRef = useRef<HTMLDivElement | null>(null);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
 
-  function showToast(text: string, ms = 2600) {
+  function showToast(text: string, ms = 2600): void {
     setToast(text);
-    window.setTimeout(() => setToast(""), ms);
+    window.setTimeout(() => setToast(''), ms);
   }
 
-  function closeSearchOverlay() {
+  function closeSearchOverlay(): void {
     setSearchOverlayOpen(false);
-    setSearchQ("");
-    setSearchOwnerQ("");
+    setSearchQ('');
+    setSearchOwnerQ('');
     setSearchHits([]);
     setSearchBusy(false);
   }
 
-  async function fetchTracks(options?: { forceOwnedOnly?: boolean }) {
-    const r = await api("/api/tracks");
-    if (!r.ok) throw new Error("tracks_failed");
+  async function fetchTracks(options?: { forceOwnedOnly?: boolean }): Promise<void> {
+    const r = await api('/api/tracks');
+    if (!r.ok) throw new Error('tracks_failed');
     const data = (await r.json()) as { tracks: Track[] };
     const tracks = data.tracks || [];
     setTracks((prev) => {
-      // Если открыт альбом, то в `prev` уже могут быть добавлены borrowed-треки
-      // из album_tracks. /api/tracks возвращает только загруженные вами файлы,
-      // поэтому при обновлении библиотеки нельзя “сбрасывать” текущую очередь.
       if (!options?.forceOwnedOnly && selectedAlbumId) {
         const map = new Map(prev.map((t) => [t.id, t]));
         for (const t of tracks) map.set(t.id, t);
@@ -288,15 +308,15 @@ export default function App() {
     log.success(`Tracks loaded: ${tracks.length}`);
   }
 
-  async function loadAlbums() {
-    const r = await api("/api/albums");
+  async function loadAlbums(): Promise<void> {
+    const r = await api('/api/albums');
     if (!r.ok) return;
     const data = (await r.json()) as { albums: AlbumRow[] };
     setAlbums(data.albums || []);
   }
 
-  async function loadProfileTracks() {
-    const r = await api("/api/profile/me");
+  async function loadProfileTracks(): Promise<void> {
+    const r = await api('/api/profile/me');
     if (!r.ok) return;
     const data = (await r.json()) as {
       tracks: Array<{ id: string; title: string; file: string; url: string; albumIds?: string[] }>;
@@ -304,10 +324,6 @@ export default function App() {
     setProfileTracks(data.tracks || []);
   }
 
-  // Иногда серверные данные профиля приходят без albumIds,
-  // хотя в альбомах уже есть треки (связи в album_tracks есть).
-  // Тогда кнопки "- Из альбома" / "⇄ Переместить" неактивны.
-  // Этот best-effort sync подтягивает membership через GET /api/albums/:albumId.
   const membershipSyncBusyRef = useRef(false);
   useEffect(() => {
     if (membershipSyncBusyRef.current) return;
@@ -318,9 +334,6 @@ export default function App() {
       (t) => Array.isArray(t.albumIds) && t.albumIds.length > 0
     );
 
-    // Синхронизируем только если:
-    // - в альбомах есть треки
-    // - ни у одного трека профиля нет albumIds
     if (!anyAlbumHasTracks || anyTrackHasAlbumIds) return;
 
     membershipSyncBusyRef.current = true;
@@ -357,11 +370,11 @@ export default function App() {
     })();
   }, [albums, profileTracks]);
 
-  async function fetchPopular() {
+  async function fetchPopular(): Promise<void> {
     try {
-      setPopularError("");
-      const r = await api("/api/popular?limit=100");
-      if (!r.ok) throw new Error("popular_failed");
+      setPopularError('');
+      const r = await api('/api/popular?limit=100');
+      if (!r.ok) throw new Error('popular_failed');
       const data = (await r.json()) as { items: PopularItem[] };
       const items = Array.isArray(data.items) ? data.items : [];
       setPopular(items);
@@ -370,16 +383,16 @@ export default function App() {
       }
     } catch {
       setPopular([]);
-      setPopularError("Нет данных");
-      log.warn("Failed to load popular tracks");
+      setPopularError('Нет данных');
+      log.warn('Failed to load popular tracks');
     }
   }
 
   useEffect(() => {
-    log.info("Melody initialized");
+    log.info('Melody initialized');
     (async () => {
       try {
-        const r = await api("/api/me");
+        const r = await api('/api/me');
         if (authSubmitInProgressRef.current) return;
         if (r.ok) {
           const d = (await r.json()) as { user: User };
@@ -423,8 +436,8 @@ export default function App() {
       if (searchReqIdRef.current !== reqId) return;
       setSearchBusy(true);
       const params = new URLSearchParams();
-      if (titleOk) params.set("q", q.slice(0, 120));
-      if (ownerOk) params.set("owner", ownerQ.slice(0, 120));
+      if (titleOk) params.set('q', q.slice(0, 120));
+      if (ownerOk) params.set('owner', ownerQ.slice(0, 120));
 
       api(`/api/search?${params.toString()}`)
         .then((r) => r.json())
@@ -444,12 +457,8 @@ export default function App() {
     return () => window.clearTimeout(t);
   }, [searchQ, searchOwnerQ, user]);
 
-  // Очередь зависит от режима:
-  // - если альбом НЕ выбран: очередь = все треки из “Мой профиль”
-  // - если альбом выбран: очередь = треки альбома (links). Удаленные из профиля элементы вычищаются.
   useEffect(() => {
     setQueue((prev) => {
-      // Без альбома очередь строго из профиля (owned-треки).
       if (!selectedAlbumId) {
         const profileIds = profileTracks.map((t) => t.id);
         const profileSet = new Set(profileIds);
@@ -459,25 +468,23 @@ export default function App() {
         const hasNoExtras = prev.every((id) => profileSet.has(id));
 
         const next = hasAll && hasNoExtras && prev.length === profileIds.length ? prev : profileIds;
-        if (next !== prev) localStorage.setItem("mw_queue", JSON.stringify(next));
+        if (next !== prev) localStorage.setItem('mw_queue', JSON.stringify(next));
         return next;
       }
 
-      // В режиме альбома не можем фильтровать, пока библиотека не загружена.
       if (tracks.length === 0) return prev;
 
       const ids = new Set(tracks.map((t) => t.id));
       const next = prev.length === 0 ? [] : prev.filter((id) => ids.has(id));
-      if (next !== prev) localStorage.setItem("mw_queue", JSON.stringify(next));
+      if (next !== prev) localStorage.setItem('mw_queue', JSON.stringify(next));
       return next;
     });
   }, [tracks, selectedAlbumId, profileTracks]);
 
-  // Текущий трек должен всегда входить в очередь.
   useEffect(() => {
     if (queue.length === 0) {
       if (currentId) {
-        setCurrentId("");
+        setCurrentId('');
         setCurTime(0);
       }
       return;
@@ -490,54 +497,53 @@ export default function App() {
   }, [queue, currentId]);
 
   useEffect(() => {
-    localStorage.setItem("mw_currentId", currentId);
+    localStorage.setItem('mw_currentId', currentId);
   }, [currentId]);
 
   useEffect(() => {
-    localStorage.setItem("mw_isPlaying", isPlaying ? "1" : "0");
+    localStorage.setItem('mw_isPlaying', isPlaying ? '1' : '0');
   }, [isPlaying]);
 
   useEffect(() => {
-    localStorage.setItem("mw_curTime", String(curTime));
+    localStorage.setItem('mw_curTime', String(curTime));
   }, [curTime]);
 
   useEffect(() => {
-    localStorage.setItem("mw_volume", String(volume));
+    localStorage.setItem('mw_volume', String(volume));
     const a = audioRef.current;
     if (a) a.volume = volume;
   }, [volume]);
 
   useEffect(() => {
-    localStorage.setItem("mw_rate", String(playbackRate));
+    localStorage.setItem('mw_rate', String(playbackRate));
     const a = audioRef.current;
     if (a) a.playbackRate = playbackRate;
   }, [playbackRate]);
 
   useEffect(() => {
-    localStorage.setItem("mw_loopMode", loopMode);
+    localStorage.setItem('mw_loopMode', loopMode);
   }, [loopMode]);
 
   useEffect(() => {
-    localStorage.setItem("mw_bass", String(bass));
-    localStorage.setItem("mw_mid", String(mid));
-    localStorage.setItem("mw_treble", String(treble));
+    localStorage.setItem('mw_bass', String(bass));
+    localStorage.setItem('mw_mid', String(mid));
+    localStorage.setItem('mw_treble', String(treble));
     if (bassRef.current) bassRef.current.gain.value = bass;
     if (midRef.current) midRef.current.gain.value = mid;
     if (trebleRef.current) trebleRef.current.gain.value = treble;
   }, [bass, mid, treble]);
 
   useEffect(() => {
-    localStorage.setItem("mw_chatOpen", chatOpen ? "1" : "0");
+    localStorage.setItem('mw_chatOpen', chatOpen ? '1' : '0');
   }, [chatOpen]);
 
   useEffect(() => {
     if (!user) {
-      setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+      setChat([{ from: 'bot', text: 'Привет!', t: Date.now() }]);
       return;
     }
-    // История чата изолируется по user.id, чтобы пользователи не видели чужие сообщения на одном устройстве.
     const key = `mw_chat_${user.id}`;
-    setChat(safeJson<ChatMsg[]>(key, [{ from: "bot", text: `Привет, ${user.displayName}!`, t: Date.now() }]));
+    setChat(safeJson<ChatMsg[]>(key, [{ from: 'bot', text: `Привет, ${user.displayName}!`, t: Date.now() }]));
   }, [user]);
 
   useEffect(() => {
@@ -547,8 +553,8 @@ export default function App() {
     } catch {}
   }, [chat, user]);
 
-  function clearChat() {
-    setChat([{ from: "bot", text: "Чат очищен. Чем могу помочь?", t: Date.now() }]);
+  function clearChat(): void {
+    setChat([{ from: 'bot', text: 'Чат очищен. Чем могу помочь?', t: Date.now() }]);
   }
 
   useEffect(() => {
@@ -566,15 +572,15 @@ export default function App() {
         setUserMenuOpen(false);
       }
     };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   useEffect(() => {
-    localStorage.setItem("mw_eqType", eqType);
+    localStorage.setItem('mw_eqType', eqType);
   }, [eqType]);
 
-  function ensureAudioGraph() {
+  function ensureAudioGraph(): void {
     const a = audioRef.current;
     if (!a) return;
 
@@ -595,14 +601,14 @@ export default function App() {
     }
     if (!bassRef.current) {
       const n = ctx.createBiquadFilter();
-      n.type = "lowshelf";
+      n.type = 'lowshelf';
       n.frequency.value = 140;
       n.gain.value = bass;
       bassRef.current = n;
     }
     if (!midRef.current) {
       const n = ctx.createBiquadFilter();
-      n.type = "peaking";
+      n.type = 'peaking';
       n.frequency.value = 1000;
       n.Q.value = 1.0;
       n.gain.value = mid;
@@ -610,7 +616,7 @@ export default function App() {
     }
     if (!trebleRef.current) {
       const n = ctx.createBiquadFilter();
-      n.type = "highshelf";
+      n.type = 'highshelf';
       n.frequency.value = 7000;
       n.gain.value = treble;
       trebleRef.current = n;
@@ -636,7 +642,7 @@ export default function App() {
     trebleN.connect(analyser);
     analyser.connect(ctx.destination);
 
-    if (ctx.state === "suspended") {
+    if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
     }
   }
@@ -646,12 +652,12 @@ export default function App() {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  function startViz() {
+  function startViz(): void {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
     if (!canvas || !analyser) return;
 
-    const ctx2d = canvas.getContext("2d");
+    const ctx2d = canvas.getContext('2d');
     if (!ctx2d) return;
 
     const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
@@ -687,7 +693,7 @@ export default function App() {
       const bw = Math.max(2 * dpr, barW - gap);
       const radius = Math.min(innerW, innerH) * 0.4;
 
-      if (eqType === "mirror-bars") {
+      if (eqType === 'mirror-bars') {
         for (let i = 0; i < bins; i++) {
           const offsetFromCenter = i - halfBins;
           const absOffset = Math.abs(offsetFromCenter);
@@ -701,7 +707,7 @@ export default function App() {
           ctx2d.fillRect(x, centerY - bh, bw, bh);
           ctx2d.fillRect(x, centerY, bw, bh);
         }
-      } else if (eqType === "dual-side") {
+      } else if (eqType === 'dual-side') {
         const halfBinsCount = Math.floor(bins / 2);
         for (let i = 0; i < halfBinsCount; i++) {
           const leftFreqIndex = Math.floor((i / halfBinsCount) * data.length);
@@ -720,7 +726,7 @@ export default function App() {
           ctx2d.fillRect(leftX, innerH - leftBh, bw, leftBh);
           ctx2d.fillRect(rightX, innerH - rightBh, bw, rightBh);
         }
-      } else if (eqType === "symmetric") {
+      } else if (eqType === 'symmetric') {
         for (let i = 0; i < bins; i++) {
           const offsetFromCenter = i - halfBins;
           const absOffset = Math.abs(offsetFromCenter);
@@ -736,7 +742,7 @@ export default function App() {
           ctx2d.fillRect(x, centerY - bh, bw, bh);
           ctx2d.fillRect(x, centerY, bw, bh);
         }
-      } else if (eqType === "wave") {
+      } else if (eqType === 'wave') {
         ctx2d.strokeStyle = `rgba(0, 211, 138, ${fadeValue})`;
         ctx2d.lineWidth = 2 * dpr;
         ctx2d.beginPath();
@@ -751,7 +757,7 @@ export default function App() {
           else ctx2d.lineTo(x, y);
         }
         ctx2d.stroke();
-      } else if (eqType === "circle") {
+      } else if (eqType === 'circle') {
         const angleStep = (Math.PI * 2) / bins;
         for (let i = 0; i < bins; i++) {
           const freqIndex = Math.floor((i / bins) * data.length);
@@ -771,7 +777,7 @@ export default function App() {
           ctx2d.lineTo(x2, y2);
           ctx2d.stroke();
         }
-      } else if (eqType === "edges-in") {
+      } else if (eqType === 'edges-in') {
         for (let i = 0; i < bins; i++) {
           const offsetFromCenter = i - halfBins;
           const absOffset = Math.abs(offsetFromCenter);
@@ -787,7 +793,7 @@ export default function App() {
           ctx2d.fillStyle = `rgba(0, 211, 138, ${fadeValue})`;
           ctx2d.fillRect(x, y, bw, bh);
         }
-      } else if (eqType === "vertical") {
+      } else if (eqType === 'vertical') {
         const verticalBins = Math.floor(bins * 0.6);
         const barH = innerH / verticalBins;
         const gapH = Math.max(1 * dpr, barH * 0.1);
@@ -803,7 +809,7 @@ export default function App() {
           ctx2d.fillStyle = `rgba(0, 211, 138, ${fadeValue})`;
           ctx2d.fillRect(x, y, barW, bh);
         }
-      } else if (eqType === "pulse") {
+      } else if (eqType === 'pulse') {
         const maxValue = Math.max(...Array.from(data));
         const maxV = maxValue / 255;
         const eased = Math.pow(maxV, 1.2);
@@ -815,7 +821,7 @@ export default function App() {
         ctx2d.strokeStyle = `rgba(0, 211, 138, ${fadeValue})`;
         ctx2d.lineWidth = 3 * dpr;
         ctx2d.stroke();
-      } else if (eqType === "spectrum") {
+      } else if (eqType === 'spectrum') {
         ctx2d.strokeStyle = `rgba(0, 211, 138, ${fadeValue})`;
         ctx2d.lineWidth = 1.5 * dpr;
         for (let i = 0; i < bins; i++) {
@@ -830,7 +836,7 @@ export default function App() {
           ctx2d.lineTo(x, innerH - lineHeight);
           ctx2d.stroke();
         }
-      } else if (eqType === "bars-3d") {
+      } else if (eqType === 'bars-3d') {
         for (let i = 0; i < bins; i++) {
           const offsetFromCenter = i - halfBins;
           const freqIndex = Math.floor((i / bins) * data.length);
@@ -848,7 +854,7 @@ export default function App() {
           ctx2d.fillStyle = `rgba(0, 255, 200, ${fadeValue * 0.5})`;
           ctx2d.fillRect(x, y, bw, bh * 0.2);
         }
-      } else if (eqType === "spiral") {
+      } else if (eqType === 'spiral') {
         const maxValue = Math.max(...Array.from(data));
         const maxV = maxValue / 255;
         const spiralTurns = 3;
@@ -868,7 +874,7 @@ export default function App() {
           ctx2d.arc(x, y, 4 * dpr, 0, Math.PI * 2);
           ctx2d.fill();
         }
-      } else if (eqType === "waterfall") {
+      } else if (eqType === 'waterfall') {
         const waterfallHeight = Math.floor(innerH / 20);
         for (let row = 0; row < 20; row++) {
           const rowAlpha = (20 - row) / 20;
@@ -884,7 +890,7 @@ export default function App() {
             ctx2d.fillRect(x, y, bw, barHeight);
           }
         }
-      } else if (eqType === "particles") {
+      } else if (eqType === 'particles') {
         const particleCount = bins;
         for (let i = 0; i < particleCount; i++) {
           const freqIndex = Math.floor((i / particleCount) * data.length);
@@ -906,19 +912,10 @@ export default function App() {
     draw();
   }
 
-
   const currentTrack = currentId ? tracksById.get(currentId) : undefined;
-<<<<<<< HEAD
-  const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file) : { artist: "", title: "" };
-=======
-<<<<<<< HEAD
-const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || currentTrack.title || "") : { artist: "", title: "" };
-=======
-  const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file) : { artist: "", title: "" };
->>>>>>> origin/main
->>>>>>> origin/main
+  const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file) : { artist: '', title: '' };
 
-  async function play() {
+  async function play(): Promise<void> {
     const a = audioRef.current;
     if (!a || !currentTrack) return;
 
@@ -937,11 +934,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       log.info(`Playing: ${currentTrack.file}`);
     } catch {
       setIsPlaying(false);
-      showToast("Нажми Play ещё раз (браузер блокирует автозвук)");
+      showToast('Нажми Play ещё раз (браузер блокирует автозвук)');
     }
   }
 
-  function pause() {
+  function pause(): void {
     const a = audioRef.current;
     if (!a) return;
     a.pause();
@@ -949,7 +946,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     if (currentTrack) log.info(`Paused: ${currentTrack.file}`);
   }
 
-  function togglePlay() {
+  function togglePlay(): void {
     const a = audioRef.current;
     if (!a || !currentTrack) {
       if (currentTrack) {
@@ -961,7 +958,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     else play();
   }
 
-  function prev() {
+  function prev(): void {
     if (!currentId || queue.length === 0) return;
     const i = queue.indexOf(currentId);
     const nextId = queue[(i - 1 + queue.length) % queue.length];
@@ -970,7 +967,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     setTimeout(() => play(), 0);
   }
 
-  function next() {
+  function next(): void {
     if (!currentId || queue.length === 0) return;
     const i = queue.indexOf(currentId);
     const nextIndex = (i + 1) % queue.length;
@@ -980,20 +977,20 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     setTimeout(() => play(), 0);
   }
 
-  function cycleLoopMode() {
-    setLoopMode((prev) => (prev === "none" ? "one" : prev === "one" ? "all" : "none"));
+  function cycleLoopMode(): void {
+    setLoopMode((prev) => (prev === 'none' ? 'one' : prev === 'one' ? 'all' : 'none'));
   }
 
-  function getLoopModeLabel() {
-    if (loopMode === "none") return "Повтор: выкл";
-    if (loopMode === "one") return "Повтор: 1 трек";
-    return "Повтор: весь плейлист";
+  function getLoopModeLabel(): string {
+    if (loopMode === 'none') return 'Повтор: выкл';
+    if (loopMode === 'one') return 'Повтор: 1 трек';
+    return 'Повтор: весь плейлист';
   }
 
-  function getLoopModeIcon() {
-    if (loopMode === "none") return "⊘";
-    if (loopMode === "one") return "↻";
-    return "∞";
+  function getLoopModeIcon(): string {
+    if (loopMode === 'none') return '⊘';
+    if (loopMode === 'one') return '↻';
+    return '∞';
   }
 
   useEffect(() => {
@@ -1002,8 +999,8 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
     const onLoaded = () => {
       setDuration(Number.isFinite(a.duration) ? a.duration : 0);
-      const savedId = localStorage.getItem("mw_currentId") || "";
-      const savedTime = Number(localStorage.getItem("mw_curTime") || "0");
+      const savedId = localStorage.getItem('mw_currentId') || '';
+      const savedTime = Number(localStorage.getItem('mw_curTime') || '0');
       if (savedId && savedId === currentId && savedTime > 0 && savedTime < a.duration - 0.25) {
         a.currentTime = savedTime;
         setCurTime(savedTime);
@@ -1016,7 +1013,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
     const onTime = () => setCurTime(a.currentTime || 0);
     const onEnded = async () => {
-      if (loopMode === "one") {
+      if (loopMode === 'one') {
         a.currentTime = 0;
         try {
           const playPromise = a.play();
@@ -1029,7 +1026,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
         }
         return;
       }
-      if (loopMode === "all") {
+      if (loopMode === 'all') {
         const i = queue.indexOf(currentId);
         const nextIndex = (i + 1) % queue.length;
         const nextId = queue[nextIndex];
@@ -1074,18 +1071,18 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       }
     };
 
-    a.addEventListener("loadedmetadata", onLoaded);
-    a.addEventListener("play", onPlay);
-    a.addEventListener("pause", onPause);
-    a.addEventListener("timeupdate", onTime);
-    a.addEventListener("ended", onEnded);
+    a.addEventListener('loadedmetadata', onLoaded);
+    a.addEventListener('play', onPlay);
+    a.addEventListener('pause', onPause);
+    a.addEventListener('timeupdate', onTime);
+    a.addEventListener('ended', onEnded);
 
     return () => {
-      a.removeEventListener("loadedmetadata", onLoaded);
-      a.removeEventListener("play", onPlay);
-      a.removeEventListener("pause", onPause);
-      a.removeEventListener("timeupdate", onTime);
-      a.removeEventListener("ended", onEnded);
+      a.removeEventListener('loadedmetadata', onLoaded);
+      a.removeEventListener('play', onPlay);
+      a.removeEventListener('pause', onPause);
+      a.removeEventListener('timeupdate', onTime);
+      a.removeEventListener('ended', onEnded);
     };
   }, [currentId, queue, loopMode]);
 
@@ -1095,10 +1092,10 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
     if (currentTrack) {
       const desiredSrc = currentTrack.url;
-      const cur = a.getAttribute("data-src") || "";
+      const cur = a.getAttribute('data-src') || '';
       if (cur !== desiredSrc) {
         a.src = desiredSrc;
-        a.setAttribute("data-src", desiredSrc);
+        a.setAttribute('data-src', desiredSrc);
         a.load();
       }
       startViz();
@@ -1116,136 +1113,136 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     const id = window.setInterval(() => {
       const a = audioRef.current;
       if (!a) return;
-      localStorage.setItem("mw_curTime", String(a.currentTime || 0));
+      localStorage.setItem('mw_curTime', String(a.currentTime || 0));
     }, 900);
     return () => window.clearInterval(id);
   }, [isPlaying, currentId]);
 
-  function reorder(from: number, to: number) {
+  function reorder(from: number, to: number): void {
     setQueue((prev) => {
       const nextQ = [...prev];
       const [it] = nextQ.splice(from, 1);
       nextQ.splice(to, 0, it);
-      localStorage.setItem("mw_queue", JSON.stringify(nextQ));
+      localStorage.setItem('mw_queue', JSON.stringify(nextQ));
       return nextQ;
     });
   }
 
-  async function uploadFiles(list: FileList) {
+  async function uploadFiles(list: FileList): Promise<void> {
     const files = Array.from(list);
     if (files.length === 0) return;
     if (!user) {
-      showToast("Войдите в аккаунт");
+      showToast('Войдите в аккаунт');
       setAuthOpen(true);
       return;
     }
 
-    const bad = files.filter((f) => !f.name.toLowerCase().endsWith(".mp3"));
+    const bad = files.filter((f) => !f.name.toLowerCase().endsWith('.mp3'));
     if (bad.length > 0) {
-      showToast("Можно загрузить только mp3");
+      showToast('Можно загрузить только mp3');
       log.warn(`Invalid files rejected: ${bad.length}`);
       return;
     }
 
     const fd = new FormData();
-    for (const f of files) fd.append("files", f);
+    for (const f of files) fd.append('files', f);
 
-    const r = await api("/api/upload", { method: "POST", body: fd });
+    const r = await api('/api/upload', { method: 'POST', body: fd });
     if (!r.ok) {
-      showToast("Не удалось загрузить");
-      log.error("Upload failed");
+      showToast('Не удалось загрузить');
+      log.error('Upload failed');
       return;
     }
     log.success(`Files uploaded: ${files.length}`);
-    showToast("Файлы добавлены");
+    showToast('Файлы добавлены');
     await fetchTracks().catch(() => {});
     await loadProfileTracks().catch(() => {});
   }
 
-  async function sendChat() {
+  async function sendChat(): Promise<void> {
     const text = chatInput.trim();
     if (!text) return;
-    setChatInput("");
+    setChatInput('');
 
-    const msg: ChatMsg = { from: "user", text, t: Date.now() };
+    const msg: ChatMsg = { from: 'user', text, t: Date.now() };
     setChat((p) => [...p, msg]);
 
     try {
       const chatHistory = chat.slice(-20).map(m => ({
-        role: m.from === "user" ? "user" : "assistant",
+        role: m.from === 'user' ? 'user' : 'assistant',
         content: m.text
       }));
       
-      const r = await api("/api/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const r = await api('/api/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ message: text, history: chatHistory }),
       });
       const data = (await r.json()) as { reply?: string };
-      const reply = (data.reply || "").trim() || "Ок";
-      setChat((p) => [...p, { from: "bot", text: reply, t: Date.now() }]);
+      const reply = (data.reply || '').trim() || 'Ок';
+      setChat((p) => [...p, { from: 'bot', text: reply, t: Date.now() }]);
     } catch {
-      setChat((p) => [...p, { from: "bot", text: "Ошибка связи с сервером", t: Date.now() }]);
+      setChat((p) => [...p, { from: 'bot', text: 'Ошибка связи с сервером', t: Date.now() }]);
     }
   }
 
-  async function sendFeedback() {
+  async function sendFeedback(): Promise<void> {
     const message = fbText.trim();
     if (message.length < 3) {
-      showToast("Напиши чуть подробнее");
+      showToast('Напиши чуть подробнее');
       return;
     }
     const payload = { name: fbName.trim(), email: fbEmail.trim(), message };
     try {
-      const r = await api("/api/feedback", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const r = await api('/api/feedback', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
       const data = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !data.ok) {
-        const errorMsg = data.error || "Не удалось отправить";
+        const errorMsg = data.error || 'Не удалось отправить';
         try {
-          const draft = safeJson<Array<{ name: string; email: string; message: string; t: number }>>("mw_feedback_failed", []);
+          const draft = safeJson<Array<{ name: string; email: string; message: string; t: number }>>('mw_feedback_failed', []);
           draft.push({ ...payload, t: Date.now() });
-          localStorage.setItem("mw_feedback_failed", JSON.stringify(draft.slice(-20)));
+          localStorage.setItem('mw_feedback_failed', JSON.stringify(draft.slice(-20)));
         } catch {}
         setFeedbackOpen(false);
-        setFbText("");
-        setFbName("");
-        setFbEmail("");
+        setFbText('');
+        setFbName('');
+        setFbEmail('');
         showToast(errorMsg);
         return;
       }
       setFeedbackOpen(false);
-      setFbText("");
-      setFbName("");
-      setFbEmail("");
-      showToast("Письмо отправлено");
+      setFbText('');
+      setFbName('');
+      setFbEmail('');
+      showToast('Письмо отправлено');
     } catch (err) {
       try {
-        const draft = safeJson<Array<{ name: string; email: string; message: string; t: number }>>("mw_feedback_failed", []);
+        const draft = safeJson<Array<{ name: string; email: string; message: string; t: number }>>('mw_feedback_failed', []);
         draft.push({ ...payload, t: Date.now() });
-        localStorage.setItem("mw_feedback_failed", JSON.stringify(draft.slice(-20)));
+        localStorage.setItem('mw_feedback_failed', JSON.stringify(draft.slice(-20)));
       } catch {}
       setFeedbackOpen(false);
-      setFbText("");
-      setFbName("");
-      setFbEmail("");
-      showToast("Письмо не отправлено: сеть/SMTP недоступны");
+      setFbText('');
+      setFbName('');
+      setFbEmail('');
+      showToast('Письмо не отправлено: сеть/SMTP недоступны');
     }
   }
 
-  function toggleDeleteSelect(id: string) {
+  function toggleDeleteSelect(id: string): void {
     setDeleteSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
-  function exitDeleteMode() {
+  function exitDeleteMode(): void {
     setDeleteMode(false);
     setDeleteSelected([]);
   }
 
-  async function deleteSelectedTracks() {
+  async function deleteSelectedTracks(): Promise<void> {
     if (!selectedAlbumId) return;
     if (deleteSelected.length === 0 || deleteBusy) return;
 
@@ -1254,9 +1251,8 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       const ok = window.confirm(`Убрать ${deleteSelected.length} треков из альбома? Файлы в профиле останутся.`);
       if (!ok) return;
 
-      // Удаление из “очереди” в режиме альбома = удаление связей album_tracks.
       for (const id of deleteSelected) {
-        await api(`/api/albums/${selectedAlbumId}/tracks/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+        await api(`/api/albums/${selectedAlbumId}/tracks/${encodeURIComponent(id)}`, { method: 'DELETE' }).catch(() => null);
       }
 
       exitDeleteMode();
@@ -1264,46 +1260,46 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       await loadAlbums().catch(() => {});
       await loadProfileTracks().catch(() => {});
     } catch {
-      showToast("Ошибка удаления из альбома");
+      showToast('Ошибка удаления из альбома');
     } finally {
       setDeleteBusy(false);
     }
   }
 
-  async function deleteTrackFile(trackId: string) {
+  async function deleteTrackFile(trackId: string): Promise<void> {
     if (!user) {
-      showToast("Войдите в аккаунт");
+      showToast('Войдите в аккаунт');
       setAuthOpen(true);
       return;
     }
     if (!trackId) return;
-    const ok = window.confirm("Удалить файл mp3? Он будет удален из профиля и из всех альбомов.");
+    const ok = window.confirm('Удалить файл mp3? Он будет удален из профиля и из всех альбомов.');
     if (!ok) return;
 
     try {
-      const r = await api("/api/tracks/delete", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const r = await api('/api/tracks/delete', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ ids: [trackId] }),
       });
       const data = (await r.json().catch(() => ({}))) as { ok?: boolean };
       if (!r.ok || !data.ok) {
-        showToast("Не удалось удалить трек");
+        showToast('Не удалось удалить трек');
         return;
       }
-      showToast("Файл удален");
+      showToast('Файл удален');
       await fetchTracks().catch(() => {});
       await loadProfileTracks().catch(() => {});
       await loadAlbums().catch(() => {});
       if (selectedAlbumId) await openAlbum(selectedAlbumId).catch(() => {});
     } catch {
-      showToast("Ошибка удаления");
+      showToast('Ошибка удаления');
     }
   }
 
-  async function copyTrackToMyProfile(trackId: string) {
+  async function copyTrackToMyProfile(trackId: string): Promise<void> {
     if (!user) {
-      showToast("Войдите в аккаунт");
+      showToast('Войдите в аккаунт');
       setAuthOpen(true);
       return;
     }
@@ -1312,46 +1308,46 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     setCopyBusyTrackId(trackId);
     try {
       const payload: any = { trackId };
-      const r = await api("/api/tracks/copy", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
+      const r = await api('/api/tracks/copy', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
         body: JSON.stringify(payload),
       });
       if (!r.ok) {
         const d = (await r.json().catch(() => ({}))) as { error?: string };
-        showToast(d.error ? `Не удалось скопировать: ${d.error}` : "Не удалось скопировать");
+        showToast(d.error ? `Не удалось скопировать: ${d.error}` : 'Не удалось скопировать');
         return;
       }
 
-      showToast("Melody: трек скопирован в ваш профиль");
+      showToast('Melody: трек скопирован в ваш профиль');
       await fetchTracks().catch(() => {});
       await loadProfileTracks().catch(() => {});
     } catch {
-      showToast("Ошибка сети при копировании");
+      showToast('Ошибка сети при копировании');
     } finally {
-      setCopyBusyTrackId("");
+      setCopyBusyTrackId('');
     }
   }
 
-  function validateAuthPassword(p: string) {
-    const password = p || "";
+  function validateAuthPassword(p: string): boolean {
+    const password = p || '';
     const hasLetter = /[A-Za-zА-Яа-я]/.test(password);
     const hasDigit = /\d/.test(password);
     return password.length >= 12 && hasLetter && hasDigit;
   }
 
-  async function submitAuth() {
+  async function submitAuth(): Promise<void> {
     setAuthBusy(true);
     authSubmitInProgressRef.current = true;
     try {
-      if (authTab === "register") {
+      if (authTab === 'register') {
         if (!validateAuthPassword(authPassword)) {
-          showToast("Пароль должен быть минимум 12 символов и содержать букву и цифру", 5000);
+          showToast('Пароль должен быть минимум 12 символов и содержать букву и цифру', 5000);
           return;
         }
-        const r = await api("/api/auth/register", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+        const r = await api('/api/auth/register', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             email: authEmail.trim(),
             password: authPassword,
@@ -1361,183 +1357,180 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
         const d = (await r.json()) as { user?: User; error?: string };
         if (!r.ok) {
           showToast(
-            d.error === "email_taken"
-              ? "Этот email уже занят"
-              : d.error === "display_name_taken"
-                ? "Этот ник уже занят"
-              : d.error === "invalid_email"
-                ? "Некорректный email"
-                : d.error === "password_too_short"
-                  ? "Пароль минимум 12 символов (буква + цифра)"
-                  : "Ошибка регистрации"
+            d.error === 'email_taken'
+              ? 'Этот email уже занят'
+              : d.error === 'display_name_taken'
+                ? 'Этот ник уже занят'
+              : d.error === 'invalid_email'
+                ? 'Некорректный email'
+                : d.error === 'password_too_short'
+                  ? 'Пароль минимум 12 символов (буква + цифра)'
+                  : 'Ошибка регистрации'
           );
           return;
         }
-        // По требованиям: после регистрации НЕ автологиним.
-        // Сервер ставит cookie, поэтому сразу очищаем ее, чтобы пользователь сам вошел в "Вход".
-        await api("/api/auth/logout", { method: "POST" }).catch(() => {});
+        await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
         setUser(null);
-        setAuthTab("login");
-        setAuthPassword("");
-        setAuthDisplayName("");
+        setAuthTab('login');
+        setAuthPassword('');
+        setAuthDisplayName('');
         setAuthShowPassword(false);
-        showToast("Регистрация успешна. Теперь войдите.", 5000);
+        showToast('Регистрация успешна. Теперь войдите.', 5000);
         setSessionChecked(true);
       } else {
-        const r = await api("/api/auth/login", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
+        const r = await api('/api/auth/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ email: authEmail.trim(), password: authPassword }),
         });
         const d = (await r.json()) as { user?: User };
         if (!r.ok) {
-          showToast("Неверный email или пароль");
+          showToast('Неверный email или пароль');
           return;
         }
         if (d.user) setUser(d.user);
         setAuthOpen(false);
-        showToast("Вход выполнен", 5000);
-        setAuthEmail("");
-        setAuthPassword("");
-        setAuthDisplayName("");
+        showToast('Вход выполнен', 5000);
+        setAuthEmail('');
+        setAuthPassword('');
+        setAuthDisplayName('');
         setAuthShowPassword(false);
         setSessionChecked(true);
       }
     } catch {
-      showToast("Ошибка сети");
+      showToast('Ошибка сети');
       setSessionChecked(true);
     } finally {
       setAuthBusy(false);
     }
   }
 
-  async function logout() {
-    await api("/api/auth/logout", { method: "POST" });
+  async function logout(): Promise<void> {
+    await api('/api/auth/logout', { method: 'POST' });
     setUser(null);
     setTracks([]);
     setQueue([]);
     setAlbums([]);
     setProfileTracks([]);
     setSearchHits([]);
-    setSearchQ("");
-    setSearchOwnerQ("");
+    setSearchQ('');
+    setSearchOwnerQ('');
     setSearchOverlayOpen(false);
     setSearchBusy(false);
     setProfileTrackSearchOpen(false);
-    setProfileTrackSearchQ("");
+    setProfileTrackSearchQ('');
     setQueueTrackSearchOpen(false);
-    setQueueTrackSearchQ("");
-    setAuthEmail("");
-    setAuthPassword("");
-    setAuthDisplayName("");
-    setAuthTab("login");
+    setQueueTrackSearchQ('');
+    setAuthEmail('');
+    setAuthPassword('');
+    setAuthDisplayName('');
+    setAuthTab('login');
     setAuthShowPassword(false);
-    setCurrentId("");
-    setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+    setCurrentId('');
+    setChat([{ from: 'bot', text: 'Привет!', t: Date.now() }]);
     setAuthOpen(true);
     try {
-      localStorage.removeItem("mw_queue");
-      localStorage.removeItem("mw_currentId");
+      localStorage.removeItem('mw_queue');
+      localStorage.removeItem('mw_currentId');
     } catch {
       /* ignore */
     }
   }
 
-  async function submitDeleteAccount() {
-    const r = await api("/api/users/me", {
-      method: "DELETE",
-      headers: { "content-type": "application/json" },
+  async function submitDeleteAccount(): Promise<void> {
+    const r = await api('/api/users/me', {
+      method: 'DELETE',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ password: deleteAccountPassword }),
     });
     if (r.ok) {
       setDeleteAccountOpen(false);
-      setDeleteAccountPassword("");
+      setDeleteAccountPassword('');
       setUser(null);
       setTracks([]);
       setQueue([]);
       setAlbums([]);
       setProfileTracks([]);
       setSearchHits([]);
-      setSearchQ("");
-      setCurrentId("");
-      setChat([{ from: "bot", text: "Привет!", t: Date.now() }]);
+      setSearchQ('');
+      setCurrentId('');
+      setChat([{ from: 'bot', text: 'Привет!', t: Date.now() }]);
       setAuthOpen(true);
-      showToast("Melody: аккаунт удалён");
+      showToast('Melody: аккаунт удалён');
     } else {
       const d = (await r.json().catch(() => ({}))) as { error?: string };
-      showToast(d.error === "invalid_password" ? "Неверный пароль" : "Не удалось удалить аккаунт");
+      showToast(d.error === 'invalid_password' ? 'Неверный пароль' : 'Не удалось удалить аккаунт');
     }
   }
 
-  async function createAlbum() {
+  async function createAlbum(): Promise<void> {
     const name = newAlbumName.trim();
     if (!name) return;
-    const r = await api("/api/albums", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+    const r = await api('/api/albums', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name }),
     });
     if (r.ok) {
-      setNewAlbumName("");
+      setNewAlbumName('');
       await loadAlbums();
-      showToast("Melody: альбом создан");
+      showToast('Melody: альбом создан');
     } else {
       const d = (await r.json().catch(() => ({}))) as { error?: string };
-      showToast(d.error === "album_name_taken" ? "Имя альбома уже занято" : "Не удалось создать альбом");
+      showToast(d.error === 'album_name_taken' ? 'Имя альбома уже занято' : 'Не удалось создать альбом');
     }
   }
 
-  async function addTrackToAlbum(albumId: string, trackId: string) {
+  async function addTrackToAlbum(albumId: string, trackId: string): Promise<void> {
     const r = await api(`/api/albums/${albumId}/tracks`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ trackId }),
     });
     if (r.ok) {
-      showToast("Трек добавлен в альбом");
-      setAddDialogTrackId("");
+      showToast('Трек добавлен в альбом');
+      setAddDialogTrackId('');
       await fetchTracks();
       await loadAlbums();
       await loadProfileTracks().catch(() => {});
       if (selectedAlbumId === albumId) await openAlbum(albumId).catch(() => {});
-    } else showToast("Не удалось добавить (возможно уже в альбоме)");
+    } else showToast('Не удалось добавить (возможно уже в альбоме)');
   }
 
-  async function removeTrackFromAlbum(albumId: string, trackId: string) {
-    const r = await api(`/api/albums/${albumId}/tracks/${encodeURIComponent(trackId)}`, { method: "DELETE" });
+  async function removeTrackFromAlbum(albumId: string, trackId: string): Promise<void> {
+    const r = await api(`/api/albums/${albumId}/tracks/${encodeURIComponent(trackId)}`, { method: 'DELETE' });
     if (r.ok) {
-      showToast("Трек убран из альбома");
+      showToast('Трек убран из альбома');
       await loadAlbums().catch(() => {});
       await loadProfileTracks().catch(() => {});
-      // Если пользователь сейчас смотрит этот альбом, обновляем очередь.
       if (selectedAlbumId === albumId) await openAlbum(albumId).catch(() => {});
     } else {
-      showToast("Не удалось убрать трек из альбома");
+      showToast('Не удалось убрать трек из альбома');
     }
   }
 
-  async function moveTrackBetweenAlbums(fromAlbumId: string, toAlbumId: string, trackId: string) {
+  async function moveTrackBetweenAlbums(fromAlbumId: string, toAlbumId: string, trackId: string): Promise<void> {
     if (!fromAlbumId || !toAlbumId || fromAlbumId === toAlbumId) return;
     await removeTrackFromAlbum(fromAlbumId, trackId);
     const r = await api(`/api/albums/${toAlbumId}/tracks`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ trackId }),
     });
     if (r.ok) {
-      showToast("Трек перемещен");
+      showToast('Трек перемещен');
       await loadAlbums().catch(() => {});
       await loadProfileTracks().catch(() => {});
       if (selectedAlbumId === toAlbumId) await openAlbum(toAlbumId).catch(() => {});
     } else {
-      showToast("Не удалось переместить трек");
+      showToast('Не удалось переместить трек');
     }
   }
 
-  async function openAlbum(albumId: string) {
+  async function openAlbum(albumId: string): Promise<void> {
     const r = await api(`/api/albums/${albumId}`);
     if (!r.ok) {
-      showToast("Не удалось открыть альбом");
+      showToast('Не удалось открыть альбом');
       return;
     }
     const d = (await r.json()) as { album: { id: string; name: string }; tracks: Track[] };
@@ -1549,9 +1542,8 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       return Array.from(map.values());
     });
     const ids = albumTracks.map((t) => t.id);
-    // При выборе альбома полностью переключаем очередь на его треки.
     setQueue(ids);
-    localStorage.setItem("mw_queue", JSON.stringify(ids));
+    localStorage.setItem('mw_queue', JSON.stringify(ids));
     if (ids.length > 0) {
       setCurrentId(ids[0]);
       setCurTime(0);
@@ -1559,58 +1551,54 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
     showToast(`Открыт альбом: ${d.album.name}`);
   }
 
-  async function closeAlbum() {
+  async function closeAlbum(): Promise<void> {
     if (!selectedAlbumId) return;
 
-    // Сбрасываем выбор альбома и возвращаем очередь к “Мой профиль” (owned-треки).
-    setSelectedAlbumId("");
+    setSelectedAlbumId('');
     const ids = profileTracks.map((t) => t.id);
     setQueue(ids);
-    localStorage.setItem("mw_queue", JSON.stringify(ids));
-    setCurrentId(ids[0] || "");
+    localStorage.setItem('mw_queue', JSON.stringify(ids));
+    setCurrentId(ids[0] || '');
     setCurTime(0);
 
-    // Убираем borrowed-треки из локального снапшота библиотеки, чтобы в режиме “без альбома”
-    // очередь не могла включить треки, добавленные через чужие альбомы.
     await fetchTracks({ forceOwnedOnly: true }).catch(() => {});
   }
 
-  async function toggleAlbum(albumId: string) {
+  async function toggleAlbum(albumId: string): Promise<void> {
     if (selectedAlbumId === albumId) return closeAlbum();
     return openAlbum(albumId);
   }
 
-  async function renameAlbum(albumId: string) {
+  async function renameAlbum(albumId: string): Promise<void> {
     const name = renameAlbumValue.trim();
     if (!name) return;
     const r = await api(`/api/albums/${albumId}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ name }),
     });
     if (r.ok) {
-      setRenameAlbumId("");
-      setRenameAlbumValue("");
+      setRenameAlbumId('');
+      setRenameAlbumValue('');
       await loadAlbums();
-      showToast("Melody: альбом переименован");
+      showToast('Melody: альбом переименован');
     } else {
       const d = (await r.json().catch(() => ({}))) as { error?: string };
-      showToast(d.error === "album_name_taken" ? "Имя альбома уже занято" : "Не удалось переименовать альбом");
+      showToast(d.error === 'album_name_taken' ? 'Имя альбома уже занято' : 'Не удалось переименовать альбом');
     }
   }
 
-  async function removeAlbum(albumId: string) {
-    // Удаляем только связь альбома и его метаданные; mp3-файлы владельца остаются.
-    const ok = window.confirm("Удалить альбом? Музыка не удалится: файлы треков останутся в вашем профиле, изменится только структура альбомов.");
+  async function removeAlbum(albumId: string): Promise<void> {
+    const ok = window.confirm('Удалить альбом? Музыка не удалится: файлы треков останутся в вашем профиле, изменится только структура альбомов.');
     if (!ok) return;
-    const r = await api(`/api/albums/${albumId}`, { method: "DELETE" });
+    const r = await api(`/api/albums/${albumId}`, { method: 'DELETE' });
     if (r.ok) {
-      if (selectedAlbumId === albumId) setSelectedAlbumId("");
+      if (selectedAlbumId === albumId) setSelectedAlbumId('');
       await loadAlbums();
       await fetchTracks();
       await loadProfileTracks().catch(() => {});
-      showToast("Melody: альбом удалён");
-    } else showToast("Не удалось удалить альбом");
+      showToast('Melody: альбом удалён');
+    } else showToast('Не удалось удалить альбом');
   }
 
   const queueTracks = useMemo(() => queue.map((id) => tracksById.get(id)).filter(Boolean) as Track[], [queue, tracksById]);
@@ -1618,13 +1606,13 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
   const profileTracksFiltered = useMemo(() => {
     const q = profileTrackSearchQ.trim().toLowerCase();
     if (!q) return profileTracks;
-    return profileTracks.filter((t) => (t.title || "").toLowerCase().includes(q));
+    return profileTracks.filter((t) => (t.title || '').toLowerCase().includes(q));
   }, [profileTracks, profileTrackSearchQ]);
 
   const queueTracksFiltered = useMemo(() => {
     const q = queueTrackSearchQ.trim().toLowerCase();
     if (!q) return queueTracks;
-    return queueTracks.filter((t) => (t.title || "").toLowerCase().includes(q));
+    return queueTracks.filter((t) => (t.title || '').toLowerCase().includes(q));
   }, [queueTracks, queueTrackSearchQ]);
 
   const queueDragDisabled = queueTrackSearchQ.trim().length > 0;
@@ -1642,24 +1630,21 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
   }, [moveDialogTrackId, profileTracks]);
 
   useEffect(() => {
-    // Если пользователь поменял "Откуда" так, что "Куда" совпало, сбрасываем "Куда" на ближайшее другое.
     if (!moveDialogTrackId) return;
     if (!moveFromAlbumId) return;
     if (moveToAlbumId && moveToAlbumId !== moveFromAlbumId) return;
-    const nextTo = albums.find((a) => a.id !== moveFromAlbumId)?.id || "";
+    const nextTo = albums.find((a) => a.id !== moveFromAlbumId)?.id || '';
     setMoveToAlbumId(nextTo);
-  }, [moveFromAlbumId, moveDialogTrackId, albums]); 
+  }, [moveFromAlbumId, moveDialogTrackId, albums]);
 
   useEffect(() => {
-    // При открытии модалки гарантируем, что "Откуда" соответствует реальным albumIds трека.
     if (!moveDialogTrackId) return;
-    const nextFrom = moveTrackAlbumIds[0] || "";
+    const nextFrom = moveTrackAlbumIds[0] || '';
     if (nextFrom && nextFrom !== moveFromAlbumId) setMoveFromAlbumId(nextFrom);
-    if (!nextFrom && moveFromAlbumId) setMoveFromAlbumId("");
+    if (!nextFrom && moveFromAlbumId) setMoveFromAlbumId('');
   }, [moveDialogTrackId, moveTrackAlbumIds, moveFromAlbumId]);
 
   useEffect(() => {
-    // Удаление из очереди разрешено только когда очередь сформирована из альбома.
     if (!selectedAlbumId && deleteMode) exitDeleteMode();
   }, [selectedAlbumId, deleteMode]);
 
@@ -1671,7 +1656,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
   if (!sessionChecked) {
     return (
-      <div className="app" style={{ display: "grid", placeItems: "center", minHeight: "100vh", color: "rgba(255,255,255,0.65)" }}>
+      <div className="app" style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', color: 'rgba(255,255,255,0.65)' }}>
         Загрузка…
       </div>
     );
@@ -1684,22 +1669,22 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
           <div className="modalOverlay">
             <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
               <div className="modalHead">
-                <div className="modalTitle">{authTab === "login" ? "Вход" : "Регистрация"}</div>
+                <div className="modalTitle">{authTab === 'login' ? 'Вход' : 'Регистрация'}</div>
               </div>
               <div className="modalBody">
-                <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                  <button type="button" className={"btn " + (authTab === "login" ? "btnPrimary" : "")} onClick={() => setAuthTab("login")}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                  <button type="button" className={'btn ' + (authTab === 'login' ? 'btnPrimary' : '')} onClick={() => setAuthTab('login')}>
                     Вход
                   </button>
                   <button
                     type="button"
-                    className={"btn " + (authTab === "register" ? "btnPrimary" : "")}
-                    onClick={() => setAuthTab("register")}
+                    className={'btn ' + (authTab === 'register' ? 'btnPrimary' : '')}
+                    onClick={() => setAuthTab('register')}
                   >
                     Регистрация
                   </button>
                 </div>
-                {authTab === "register" ? (
+                {authTab === 'register' ? (
                   <input
                     className="input"
                     placeholder="Имя (отображается в профиле)"
@@ -1717,12 +1702,12 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   onChange={(e) => setAuthEmail(e.target.value)}
                   style={{ marginBottom: 8 }}
                 />
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                   <input
                     className="input"
                     placeholder="Пароль"
-                    type={authShowPassword ? "text" : "password"}
-                    autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                    type={authShowPassword ? 'text' : 'password'}
+                    autoComplete={authTab === 'login' ? 'current-password' : 'new-password'}
                     value={authPassword}
                     onChange={(e) => setAuthPassword(e.target.value)}
                     style={{ marginBottom: 0, flex: 1 }}
@@ -1730,9 +1715,9 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   <button
                     type="button"
                     className="btn"
-                    style={{ padding: "6px 10px", minWidth: "auto" }}
+                    style={{ padding: '6px 10px', minWidth: 'auto' }}
                     onClick={() => setAuthShowPassword((v) => !v)}
-                    title={authShowPassword ? "Скрыть пароль" : "Показать пароль"}
+                    title={authShowPassword ? 'Скрыть пароль' : 'Показать пароль'}
                   >
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                       <path
@@ -1746,7 +1731,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   </button>
                 </div>
                 <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
-                  {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
+                  {authBusy ? '…' : authTab === 'login' ? 'Войти' : 'Зарегистрироваться'}
                 </button>
               </div>
             </div>
@@ -1760,7 +1745,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
   return (
     <div className="app">
       <div className="topbar">
-        <div className="topbarInner" style={{ flexWrap: "wrap" }}>
+        <div className="topbarInner" style={{ flexWrap: 'wrap' }}>
           <div className="brand">
             <div className="brandName">Melody</div>
           </div>
@@ -1771,10 +1756,10 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               className="btn"
               aria-label="Открыть поиск"
               title="Поиск"
-              style={{ padding: "10px 12px", width: 46, height: 46, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
+              style={{ padding: '10px 12px', width: 46, height: 46, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
               onClick={() => {
                 if (!user) {
-                  showToast("Войдите, чтобы искать треки");
+                  showToast('Войдите, чтобы искать треки');
                   setAuthOpen(true);
                   closeSearchOverlay();
                   return;
@@ -1805,17 +1790,17 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
             </button>
             {user ? (
               <>
-                <div style={{ position: "relative" }} ref={userMenuRef}>
+                <div style={{ position: 'relative' }} ref={userMenuRef}>
                   <span
                     className="userChip"
                     title={user.email}
-                    style={{ cursor: "pointer" }}
+                    style={{ cursor: 'pointer' }}
                     onClick={() => setUserMenuOpen((v) => !v)}
                   >
                     {user.displayName}
                   </span>
                   {userMenuOpen && (
-                    <div className="dropdownMenu" style={{ right: 0, left: "auto", minWidth: 220 }}>
+                    <div className="dropdownMenu" style={{ right: 0, left: 'auto', minWidth: 220 }}>
                       <div
                         className="dropdownItem"
                         onClick={() => {
@@ -1829,7 +1814,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                         className="dropdownItem"
                         onClick={() => {
                           setUserMenuOpen(false);
-                          const ok = window.confirm("Удалить аккаунт? Будут удалены профиль, альбомы и все ваши файлы.");
+                          const ok = window.confirm('Удалить аккаунт? Будут удалены профиль, альбомы и все ваши файлы.');
                           if (ok) setDeleteAccountOpen(true);
                         }}
                       >
@@ -1844,7 +1829,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 Войти
               </button>
             )}
-            <button className={"btn " + (chatOpen ? "btnPrimary" : "")} onClick={() => setChatOpen((v) => !v)}>
+            <button className={'btn ' + (chatOpen ? 'btnPrimary' : '')} onClick={() => setChatOpen((v) => !v)}>
               чат
             </button>
           </div>
@@ -1852,7 +1837,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       </div>
 
       <div className="page">
-        <div className={"layout " + (chatOpen ? "layoutChatOpen" : "")}>
+        <div className={'layout ' + (chatOpen ? 'layoutChatOpen' : '')}>
           <div className="col">
             <div style={{ height: 16 }} />
 
@@ -1862,7 +1847,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   <span>Альбомы</span>
                   <span className="hint">Загрузка треков идёт в ваш профиль</span>
                 </div>
-                <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={!user}>
                     + mp3
                   </button>
@@ -1875,10 +1860,10 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   type="file"
                   accept=".mp3,audio/mpeg"
                   multiple
-                  style={{ display: "none" }}
+                  style={{ display: 'none' }}
                   onChange={(e) => {
                     if (e.target.files) uploadFiles(e.target.files).catch(() => {});
-                    e.target.value = "";
+                    e.target.value = '';
                   }}
                 />
                 <input
@@ -1886,14 +1871,14 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   type="file"
                   accept=".mp3,audio/mpeg"
                   multiple
-                  style={{ display: "none" }}
+                  style={{ display: 'none' }}
                   onChange={(e) => {
                     if (e.target.files) uploadFiles(e.target.files).catch(() => {});
-                    e.target.value = "";
+                    e.target.value = '';
                   }}
-                  {...({ webkitdirectory: "true", directory: "true" } as any)}
+                  {...({ webkitdirectory: 'true', directory: 'true' } as any)}
                 />
-                <div className="row2" style={{ marginBottom: 10, gridTemplateColumns: "2fr 0.55fr" }}>
+                <div className="row2" style={{ marginBottom: 10, gridTemplateColumns: '2fr 0.55fr' }}>
                   <input
                     className="input"
                     placeholder="Название нового альбома"
@@ -1906,7 +1891,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     className="btn btnPrimary"
                     onClick={() => createAlbum().catch(() => {})}
                     disabled={!user}
-                    style={{ justifyContent: "center" }}
+                    style={{ justifyContent: 'center' }}
                   >
                     Создать
                   </button>
@@ -1923,20 +1908,20 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     overscan={4}
                     getKey={(a) => a.id}
                     containerClassName="queueList"
-                    containerStyle={{ maxHeight: 420, paddingRight: 6, gap: 10, overflowY: "auto" }}
+                    containerStyle={{ maxHeight: 420, paddingRight: 6, gap: 10, overflowY: 'auto' }}
                     renderItem={(a, _idx) => (
                       <div
-                        className={"queueItem " + (selectedAlbumId === a.id ? "queueItemActive" : "")}
+                        className={'queueItem ' + (selectedAlbumId === a.id ? 'queueItemActive' : '')}
                         onClick={() => toggleAlbum(a.id).catch(() => {})}
                       >
-                        <div className="qText" style={{ cursor: "pointer" }}>
+                        <div className="qText" style={{ cursor: 'pointer' }}>
                           <div className="qTitle">{a.name}</div>
                           <div className="qSub">
                             Треков: {a.track_count} • id: {a.id.slice(0, 8)}
                           </div>
                         </div>
                         <div
-                          style={{ display: "flex", gap: 8, marginLeft: "auto" }}
+                          style={{ display: 'flex', gap: 8, marginLeft: 'auto' }}
                           onClick={(e) => e.stopPropagation()}
                         >
                           <button
@@ -1973,15 +1958,15 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   <span className="hint">ваши загрузки • В очереди: {queue.length}</span>
                 </div>
                 {profileTracks.length > 0 ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 10 }}>
                     <button
                       type="button"
                       className="btn"
-                      style={{ padding: "6px 10px", minWidth: "auto" }}
+                      style={{ padding: '6px 10px', minWidth: 'auto' }}
                       onClick={() => {
                         setProfileTrackSearchOpen((v) => {
                           const next = !v;
-                          if (!next) setProfileTrackSearchQ("");
+                          if (!next) setProfileTrackSearchQ('');
                           return next;
                         });
                       }}
@@ -2004,11 +1989,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   </div>
                 ) : null}
                 {profileTracks.length === 0 ? (
-                  <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
-                    <div className="hint">{user ? "В профиле пока пусто — загрузите mp3." : "Нет данных"}</div>
+                  <div className="queueList" style={{ maxHeight: 420, overflowY: 'auto', paddingRight: 6 }}>
+                    <div className="hint">{user ? 'В профиле пока пусто — загрузите mp3.' : 'Нет данных'}</div>
                   </div>
                 ) : profileTracksFiltered.length === 0 ? (
-                  <div className="queueList" style={{ maxHeight: 420, overflowY: "auto", paddingRight: 6 }}>
+                  <div className="queueList" style={{ maxHeight: 420, overflowY: 'auto', paddingRight: 6 }}>
                     <div className="hint">Ничего не найдено.</div>
                   </div>
                 ) : (
@@ -2025,25 +2010,20 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                           <div className="qTitle">{t.title}</div>
                           <div className="qSub">{t.file}</div>
                         </div>
-                        {/*
-                          Альбомы в новой модели — это сортировка (ссылки в album_tracks),
-                          а mp3 всегда физически хранится в профиле.
-                          albumIds для трека показывает, в каких альбомах он сейчас лежит.
-                        */}
                         <div
                           style={{
-                            marginLeft: "auto",
-                            display: "flex",
-                            flexDirection: "column",
+                            marginLeft: 'auto',
+                            display: 'flex',
+                            flexDirection: 'column',
                             gap: 8,
-                            alignItems: "flex-end",
+                            alignItems: 'flex-end',
                             width: 160,
                           }}
                         >
                           {(() => {
                             const inAlbumIds = Array.isArray(t.albumIds) ? t.albumIds : [];
-                            const firstFrom = inAlbumIds[0] || "";
-                            const firstFromName = albums.find((a) => a.id === firstFrom)?.name || "";
+                            const firstFrom = inAlbumIds[0] || '';
+                            const firstFromName = albums.find((a) => a.id === firstFrom)?.name || '';
                             const availableToIds = albums.map((a) => a.id).filter((id) => id !== firstFrom);
                             return (
                               <>
@@ -2053,7 +2033,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                                   disabled={!user || albums.length === 0}
                                   onClick={() => setAddDialogTrackId(t.id)}
                                   title="Добавить трек в выбранный альбом"
-                                  style={{ width: 160, justifyContent: "center" }}
+                                  style={{ width: 160, justifyContent: 'center' }}
                                 >
                                   + В альбом
                                 </button>
@@ -2063,7 +2043,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                                   disabled={!user || inAlbumIds.length === 0}
                                   onClick={() => setRemoveDialogTrackId(t.id)}
                                   title="Убрать трек из выбранного альбома (файл не удаляется)"
-                                  style={{ width: 160, justifyContent: "center" }}
+                                  style={{ width: 160, justifyContent: 'center' }}
                                 >
                                   - Из альбома
                                 </button>
@@ -2073,17 +2053,17 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                                   disabled={!user || inAlbumIds.length === 0 || availableToIds.length === 0}
                                   onClick={() => {
                                     setMoveDialogTrackId(t.id);
-                                    const fromId = inAlbumIds[0] || "";
-                                    const toId = availableToIds[0] || "";
+                                    const fromId = inAlbumIds[0] || '';
+                                    const toId = availableToIds[0] || '';
                                     setMoveFromAlbumId(fromId);
                                     setMoveToAlbumId(toId);
                                   }}
                                   title={
                                     firstFromName
                                       ? `Переместить: из "${firstFromName}" в другой альбом`
-                                      : "Переместить трек между альбомами"
+                                      : 'Переместить трек между альбомами'
                                   }
-                                  style={{ width: 160, justifyContent: "center" }}
+                                  style={{ width: 160, justifyContent: 'center' }}
                                 >
                                   ⇄ Переместить
                                 </button>
@@ -2093,7 +2073,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                                   disabled={!user}
                                   onClick={() => deleteTrackFile(t.id).catch(() => {})}
                                   title="Удалить mp3 из профиля (и убрать из всех альбомов)"
-                                  style={{ width: 160, justifyContent: "center" }}
+                                  style={{ width: 160, justifyContent: 'center' }}
                                 >
                                   Корзина
                                 </button>
@@ -2116,35 +2096,35 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   <span>Проигрыватель</span>
                 </div>
 
-                <h1 className="nowTitle">{currentMeta.artist ? `${currentMeta.artist} — ${currentMeta.title}` : "Нет трека"}</h1>
-                <div className="nowSub">{currentTrack?.file || ""}</div>
+                <h1 className="nowTitle">{currentMeta.artist ? `${currentMeta.artist} — ${currentMeta.title}` : 'Нет трека'}</h1>
+                <div className="nowSub">{currentTrack?.file || ''}</div>
 
                 <div className="controlsRow">
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <button className="iconBtn" onClick={prev} aria-label="Prev">
                       ⟨⟨
                     </button>
                     <button className="iconBtn playBtn" onClick={togglePlay} aria-label="Play">
-                      {isPlaying ? "❚❚" : "▶"}
+                      {isPlaying ? '❚❚' : '▶'}
                     </button>
                     <button className="iconBtn" onClick={next} aria-label="Next">
                       ⟩⟩
                     </button>
-                    <div style={{ position: "relative" }} ref={loopMenuRef}>
+                    <div style={{ position: 'relative' }} ref={loopMenuRef}>
                       <button
-                        className={"iconBtn " + (loopMode !== "none" ? "btnPrimary" : "")}
+                        className={'iconBtn ' + (loopMode !== 'none' ? 'btnPrimary' : '')}
                         onClick={() => setLoopMenuOpen(!loopMenuOpen)}
-                        aria-label={"Loop: " + (loopMode === "one" ? "track" : loopMode === "all" ? "playlist" : "off")}
+                        aria-label={'Loop: ' + (loopMode === 'one' ? 'track' : loopMode === 'all' ? 'playlist' : 'off')}
                         title={getLoopModeLabel()}
                       >
                         {getLoopModeIcon()}
                       </button>
                       {loopMenuOpen && (
-                        <div className="dropdownMenu" style={{ right: 0, left: "auto", minWidth: "180px", width: "auto" }}>
+                        <div className="dropdownMenu" style={{ right: 0, left: 'auto', minWidth: '180px', width: 'auto' }}>
                           <div
-                            className={"dropdownItem " + (loopMode === "none" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (loopMode === 'none' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setLoopMode("none");
+                              setLoopMode('none');
                               setLoopMenuOpen(false);
                             }}
                           >
@@ -2152,9 +2132,9 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             <span>Выкл повтор</span>
                           </div>
                           <div
-                            className={"dropdownItem " + (loopMode === "one" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (loopMode === 'one' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setLoopMode("one");
+                              setLoopMode('one');
                               setLoopMenuOpen(false);
                             }}
                           >
@@ -2162,9 +2142,9 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             <span>Повтор 1 трек</span>
                           </div>
                           <div
-                            className={"dropdownItem " + (loopMode === "all" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (loopMode === 'all' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setLoopMode("all");
+                              setLoopMode('all');
                               setLoopMenuOpen(false);
                             }}
                           >
@@ -2176,8 +2156,8 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-                    <div style={{ position: "relative", minWidth: 160 }} ref={speedMenuRef}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ position: 'relative', minWidth: 160 }} ref={speedMenuRef}>
                       <div className="fieldLabel">Скорость</div>
                       <button className="dropdownBtn" onClick={() => setSpeedMenuOpen(!speedMenuOpen)}>
                         <span>{playbackRate}×</span>
@@ -2186,7 +2166,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                       {speedMenuOpen && (
                         <div className="dropdownMenu">
                           <div
-                            className={"dropdownItem " + (playbackRate === 0.75 ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (playbackRate === 0.75 ? 'dropdownItemActive' : '')}
                             onClick={() => {
                               setPlaybackRate(0.75);
                               setSpeedMenuOpen(false);
@@ -2195,7 +2175,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             0.75×
                           </div>
                           <div
-                            className={"dropdownItem " + (playbackRate === 1 ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (playbackRate === 1 ? 'dropdownItemActive' : '')}
                             onClick={() => {
                               setPlaybackRate(1);
                               setSpeedMenuOpen(false);
@@ -2204,7 +2184,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             1×
                           </div>
                           <div
-                            className={"dropdownItem " + (playbackRate === 1.25 ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (playbackRate === 1.25 ? 'dropdownItemActive' : '')}
                             onClick={() => {
                               setPlaybackRate(1.25);
                               setSpeedMenuOpen(false);
@@ -2213,7 +2193,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             1.25×
                           </div>
                           <div
-                            className={"dropdownItem " + (playbackRate === 1.5 ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (playbackRate === 1.5 ? 'dropdownItemActive' : '')}
                             onClick={() => {
                               setPlaybackRate(1.5);
                               setSpeedMenuOpen(false);
@@ -2250,149 +2230,149 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
                   <div>
                     <div className="fieldLabel">Громкость</div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <input className="range" type="range" min={0} max={1} step={0.01} value={volume} onChange={(e) => setVolume(Number(e.target.value))} />
-                      <span style={{ minWidth: "45px", fontSize: "12px", color: "rgba(255, 255, 255, 0.55)" }}>{Math.round(volume * 100)}%</span>
+                      <span style={{ minWidth: '45px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.55)' }}>{Math.round(volume * 100)}%</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="eqWrap">
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div className="fieldLabel">Эквалайзер</div>
-                    <div style={{ position: "relative" }} ref={eqTypeMenuRef}>
-                      <button className="dropdownBtn" onClick={() => setEqTypeMenuOpen(!eqTypeMenuOpen)} style={{ minWidth: "200px" }}>
+                    <div style={{ position: 'relative' }} ref={eqTypeMenuRef}>
+                      <button className="dropdownBtn" onClick={() => setEqTypeMenuOpen(!eqTypeMenuOpen)} style={{ minWidth: '200px' }}>
                         <span>
-                          {eqType === "mirror-bars" ? "Зеркальные бары" :
-                           eqType === "dual-side" ? "Разделённый" :
-                           eqType === "symmetric" ? "Симметричный" :
-                           eqType === "wave" ? "Волна" :
-                           eqType === "circle" ? "Круг" :
-                           eqType === "edges-in" ? "От краёв к центру" :
-                           eqType === "vertical" ? "Вертикальный" :
-                           eqType === "pulse" ? "Пульсация" :
-                           eqType === "spectrum" ? "Спектр" :
-                           eqType === "bars-3d" ? "3D бары" :
-                           eqType === "spiral" ? "Спираль" :
-                           eqType === "waterfall" ? "Водопад" :
-                           "Частицы"}
+                          {eqType === 'mirror-bars' ? 'Зеркальные бары' :
+                           eqType === 'dual-side' ? 'Разделённый' :
+                           eqType === 'symmetric' ? 'Симметричный' :
+                           eqType === 'wave' ? 'Волна' :
+                           eqType === 'circle' ? 'Круг' :
+                           eqType === 'edges-in' ? 'От краёв к центру' :
+                           eqType === 'vertical' ? 'Вертикальный' :
+                           eqType === 'pulse' ? 'Пульсация' :
+                           eqType === 'spectrum' ? 'Спектр' :
+                           eqType === 'bars-3d' ? '3D бары' :
+                           eqType === 'spiral' ? 'Спираль' :
+                           eqType === 'waterfall' ? 'Водопад' :
+                           'Частицы'}
                         </span>
                         <span style={{ opacity: 0.6 }}>▼</span>
                       </button>
                       {eqTypeMenuOpen && (
-                        <div className="dropdownMenu" style={{ maxHeight: "300px", overflowY: "auto" }}>
+                        <div className="dropdownMenu" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                           <div
-                            className={"dropdownItem " + (eqType === "mirror-bars" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'mirror-bars' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("mirror-bars");
+                              setEqType('mirror-bars');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Зеркальные бары
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "dual-side" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'dual-side' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("dual-side");
+                              setEqType('dual-side');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Разделённый
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "symmetric" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'symmetric' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("symmetric");
+                              setEqType('symmetric');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Симметричный
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "wave" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'wave' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("wave");
+                              setEqType('wave');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Волна
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "circle" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'circle' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("circle");
+                              setEqType('circle');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Круг
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "edges-in" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'edges-in' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("edges-in");
+                              setEqType('edges-in');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             От краёв к центру
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "vertical" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'vertical' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("vertical");
+                              setEqType('vertical');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Вертикальный
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "pulse" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'pulse' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("pulse");
+                              setEqType('pulse');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Пульсация
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "spectrum" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'spectrum' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("spectrum");
+                              setEqType('spectrum');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Спектр
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "bars-3d" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'bars-3d' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("bars-3d");
+                              setEqType('bars-3d');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             3D бары
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "spiral" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'spiral' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("spiral");
+                              setEqType('spiral');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Спираль
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "waterfall" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'waterfall' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("waterfall");
+                              setEqType('waterfall');
                               setEqTypeMenuOpen(false);
                             }}
                           >
                             Водопад
                           </div>
                           <div
-                            className={"dropdownItem " + (eqType === "particles" ? "dropdownItemActive" : "")}
+                            className={'dropdownItem ' + (eqType === 'particles' ? 'dropdownItemActive' : '')}
                             onClick={() => {
-                              setEqType("particles");
+                              setEqType('particles');
                               setEqTypeMenuOpen(false);
                             }}
                           >
@@ -2403,7 +2383,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     </div>
                   </div>
                   <div className="viz">
-                    <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
+                    <canvas ref={canvasRef} style={{ width: '100%', height: '100%' }} />
                   </div>
 
                   <div className="eqGrid">
@@ -2435,7 +2415,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               <div className="panelInner">
                 <div className="sectionTitle">
                   <span>Очередь</span>
-                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
                     {selectedAlbumId ? (
                       !deleteMode ? (
                         <button className="btn btnDanger" onClick={() => setDeleteMode(true)} disabled={queueTracks.length === 0}>
@@ -2450,9 +2430,9 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                             className="btn btnDanger"
                             onClick={() => deleteSelectedTracks().catch(() => {})}
                             disabled={deleteBusy || deleteSelected.length === 0}
-                            title={deleteSelected.length === 0 ? "Выберите треки для удаления" : ""}
+                            title={deleteSelected.length === 0 ? 'Выберите треки для удаления' : ''}
                           >
-                            {deleteBusy ? "Удаление..." : `Подтвердить (${deleteSelected.length})`}
+                            {deleteBusy ? 'Удаление...' : `Подтвердить (${deleteSelected.length})`}
                           </button>
                         </>
                       )
@@ -2463,15 +2443,15 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 </div>
 
                 {queueTracks.length > 0 ? (
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", margin: "8px 0 10px" }}>
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0 10px' }}>
                     <button
                       type="button"
                       className="btn"
-                      style={{ padding: "6px 10px", minWidth: "auto" }}
+                      style={{ padding: '6px 10px', minWidth: 'auto' }}
                       onClick={() => {
                         setQueueTrackSearchOpen((v) => {
                           const next = !v;
-                          if (!next) setQueueTrackSearchQ("");
+                          if (!next) setQueueTrackSearchQ('');
                           return next;
                         });
                       }}
@@ -2507,10 +2487,10 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     return (
                       <div
                         className={
-                          "queueItem " +
-                          (active ? "queueItemActive " : "") +
-                          (selected ? "queueItemSelected " : "") +
-                          (dragOver === idx && dragFrom !== null && dragFrom !== idx ? "dragOver" : "")
+                          'queueItem ' +
+                          (active ? 'queueItemActive ' : '') +
+                          (selected ? 'queueItemSelected ' : '') +
+                          (dragOver === idx && dragFrom !== null && dragFrom !== idx ? 'dragOver' : '')
                         }
                         draggable={!deleteMode && !queueDragDisabled}
                         onDragStart={() => {
@@ -2544,7 +2524,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                           setTimeout(() => play(), 0);
                         }}
                       >
-                        <div className={"bullet " + (t.owned === false ? "bulletBorrowed" : "bulletOwned")} />
+                        <div className={'bullet ' + (t.owned === false ? 'bulletBorrowed' : 'bulletOwned')} />
                         <div className="qText">
                           <div className="qTitle">{splitArtistTitle(t.file).title}</div>
                           <div className="qSub">{t.file}</div>
@@ -2562,12 +2542,12 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               <div className="popularOuter">
                 <div className="sectionTitle">
                   <span>Популярное</span>
-                  <span className="hint">{popularError ? popularError : "Hot 100"}</span>
+                  <span className="hint">{popularError ? popularError : 'Hot 100'}</span>
                 </div>
 
                 <div className="popularMarquee">
                   {popularLoop.length === 0 ? (
-                    <div style={{ padding: "10px 2px", color: "rgba(255,255,255,0.55)" }}>Нет данных</div>
+                    <div style={{ padding: '10px 2px', color: 'rgba(255,255,255,0.55)' }}>Нет данных</div>
                   ) : (
                     <div className="popularRow">
                       {popularLoop.map((p, i) => (
@@ -2603,12 +2583,12 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               <div style={{ height: 16 }} />
               <div className="panel chatPanel">
                 <div className="panelInner" style={{ paddingBottom: 10 }}>
-                  <div className="sectionTitle" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div className="sectionTitle" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span>Чат</span>
                     <button
                       className="btn"
                       onClick={clearChat}
-                      style={{ padding: "6px 12px", fontSize: "12px", minWidth: "auto" }}
+                      style={{ padding: '6px 12px', fontSize: '12px', minWidth: 'auto' }}
                       title="Очистить чат"
                     >
                       Очистить
@@ -2624,7 +2604,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   containerClassName="chatBody"
                   containerStyle={{ gap: 0 }}
                   renderItem={(m, _idx) => (
-                    <div className={"msg " + (m.from === "user" ? "msgUser" : "")}>{m.text}</div>
+                    <div className={'msg ' + (m.from === 'user' ? 'msgUser' : '')}>{m.text}</div>
                   )}
                 />
 
@@ -2635,7 +2615,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     placeholder="Сообщение..."
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") sendChat().catch(() => {});
+                      if (e.key === 'Enter') sendChat().catch(() => {});
                     }}
                   />
                   <button className="sendBtn" onClick={() => sendChat().catch(() => {})}>
@@ -2673,7 +2653,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
 
       {searchOverlayOpen && (
         <div className="modalOverlay" onMouseDown={() => closeSearchOverlay()}>
-          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: "min(860px, 96vw)" }}>
+          <div className="modal" onMouseDown={(e) => e.stopPropagation()} style={{ width: 'min(860px, 96vw)' }}>
             <div className="modalHead">
               <div className="modalTitle">Поиск треков других пользователей</div>
               <button type="button" className="btn" onClick={() => closeSearchOverlay()}>
@@ -2681,11 +2661,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               </button>
             </div>
             <div className="modalBody">
-              <div style={{ display: "flex", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+              <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
                 <input
                   className="input"
                   style={{ flex: 1, minWidth: 260 }}
-                  placeholder={user ? "Поиск треков по названию…" : "Войдите, чтобы искать треки"}
+                  placeholder={user ? 'Поиск треков по названию…' : 'Войдите, чтобы искать треки'}
                   value={searchQ}
                   onChange={(e) => setSearchQ(e.target.value)}
                   disabled={!user}
@@ -2693,22 +2673,22 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 <input
                   className="input"
                   style={{ width: 260 }}
-                  placeholder={user ? "Пользователь (имя/ник)…" : "—"}
+                  placeholder={user ? 'Пользователь (имя/ник)…' : '—'}
                   value={searchOwnerQ}
                   onChange={(e) => setSearchOwnerQ(e.target.value)}
                   disabled={!user}
                 />
-                {searchBusy ? <span className="hint" style={{ alignSelf: "center" }}>Поиск…</span> : null}
+                {searchBusy ? <span className="hint" style={{ alignSelf: 'center' }}>Поиск…</span> : null}
               </div>
 
               {searchHits.length === 0 ? (
-                <div className="searchList" style={{ maxHeight: "60vh", overflowY: "auto", paddingRight: 6 }}>
+                <div className="searchList" style={{ maxHeight: '60vh', overflowY: 'auto', paddingRight: 6 }}>
                   <div className="hint">
                     {!user
-                      ? "Войдите, чтобы искать треки."
+                      ? 'Войдите, чтобы искать треки.'
                       : searchQ.trim().length < 2 && searchOwnerQ.trim().length < 2
-                        ? "Введите минимум 2 символа в названии трека или в поле “Пользователь”."
-                        : "Ничего не найдено."}
+                        ? 'Введите минимум 2 символа в названии трека или в поле “Пользователь”.'
+                        : 'Ничего не найдено.'}
                   </div>
                 </div>
               ) : (
@@ -2718,13 +2698,13 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                   overscan={3}
                   getKey={(h) => h.track_id}
                   containerClassName="searchList"
-                  containerStyle={{ maxHeight: "60vh", paddingRight: 6, gap: 8 }}
+                  containerStyle={{ maxHeight: '60vh', paddingRight: 6, gap: 8 }}
                   renderItem={(h, _idx) => (
                     <div className="searchRow">
                       <div className="qText">
                         <div className="qTitle">{h.title}</div>
                       </div>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
                         <div className="hint">от: {h.owner_name}</div>
                         <button
                           type="button"
@@ -2732,7 +2712,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                           disabled={!user || (h.owner_id && h.owner_id === user.id) || copyBusyTrackId === h.track_id}
                           onClick={() => copyTrackToMyProfile(h.track_id).catch(() => {})}
                         >
-                          {copyBusyTrackId === h.track_id ? "Копирование..." : "Скопировать в мой профиль"}
+                          {copyBusyTrackId === h.track_id ? 'Копирование...' : 'Скопировать в мой профиль'}
                         </button>
                       </div>
                     </div>
@@ -2748,7 +2728,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
         <div className="modalOverlay" onMouseDown={() => user && setAuthOpen(false)}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalHead">
-              <div className="modalTitle">{authTab === "login" ? "Вход" : "Регистрация"}</div>
+              <div className="modalTitle">{authTab === 'login' ? 'Вход' : 'Регистрация'}</div>
               {user ? (
                 <button type="button" className="btn" onClick={() => setAuthOpen(false)}>
                   ✕
@@ -2756,23 +2736,23 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
               ) : null}
             </div>
             <div className="modalBody">
-              <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
                 <button
                   type="button"
-                  className={"btn " + (authTab === "login" ? "btnPrimary" : "")}
-                  onClick={() => setAuthTab("login")}
+                  className={'btn ' + (authTab === 'login' ? 'btnPrimary' : '')}
+                  onClick={() => setAuthTab('login')}
                 >
                   Вход
                 </button>
                 <button
                   type="button"
-                  className={"btn " + (authTab === "register" ? "btnPrimary" : "")}
-                  onClick={() => setAuthTab("register")}
+                  className={'btn ' + (authTab === 'register' ? 'btnPrimary' : '')}
+                  onClick={() => setAuthTab('register')}
                 >
                   Регистрация
                 </button>
               </div>
-              {authTab === "register" ? (
+              {authTab === 'register' ? (
                 <input
                   className="input"
                   placeholder="Имя (отображается в профиле)"
@@ -2790,12 +2770,12 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 onChange={(e) => setAuthEmail(e.target.value)}
                 style={{ marginBottom: 8 }}
               />
-              <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 12 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
                 <input
                   className="input"
                   placeholder="Пароль"
-                  type={authShowPassword ? "text" : "password"}
-                  autoComplete={authTab === "login" ? "current-password" : "new-password"}
+                  type={authShowPassword ? 'text' : 'password'}
+                  autoComplete={authTab === 'login' ? 'current-password' : 'new-password'}
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   style={{ marginBottom: 0, flex: 1 }}
@@ -2803,9 +2783,9 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 <button
                   type="button"
                   className="btn"
-                  style={{ padding: "6px 10px", minWidth: "auto" }}
+                  style={{ padding: '6px 10px', minWidth: 'auto' }}
                   onClick={() => setAuthShowPassword((v) => !v)}
-                  title={authShowPassword ? "Скрыть пароль" : "Показать пароль"}
+                  title={authShowPassword ? 'Скрыть пароль' : 'Показать пароль'}
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                     <path
@@ -2819,7 +2799,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 </button>
               </div>
               <button type="button" className="sendBtn" disabled={authBusy} onClick={() => submitAuth().catch(() => {})}>
-                {authBusy ? "…" : authTab === "login" ? "Войти" : "Зарегистрироваться"}
+                {authBusy ? '…' : authTab === 'login' ? 'Войти' : 'Зарегистрироваться'}
               </button>
               {!user ? <div className="hint" style={{ marginTop: 10 }}>Без входа недоступны загрузка, поиск и библиотека.</div> : null}
             </div>
@@ -2848,7 +2828,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 onChange={(e) => setDeleteAccountPassword(e.target.value)}
                 style={{ marginBottom: 12 }}
               />
-              <button type="button" className="sendBtn" style={{ background: "rgba(255,68,68,0.25)" }} onClick={() => submitDeleteAccount().catch(() => {})}>
+              <button type="button" className="sendBtn" style={{ background: 'rgba(255,68,68,0.25)' }} onClick={() => submitDeleteAccount().catch(() => {})}>
                 Удалить навсегда
               </button>
             </div>
@@ -2857,11 +2837,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       )}
 
       {renameAlbumId && (
-        <div className="modalOverlay" onMouseDown={() => setRenameAlbumId("")}>
+        <div className="modalOverlay" onMouseDown={() => setRenameAlbumId('')}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalHead">
               <div className="modalTitle">Переименовать альбом</div>
-              <button type="button" className="btn" onClick={() => setRenameAlbumId("")}>
+              <button type="button" className="btn" onClick={() => setRenameAlbumId('')}>
                 ✕
               </button>
             </div>
@@ -2876,11 +2856,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       )}
 
       {addDialogTrackId && (
-        <div className="modalOverlay" onMouseDown={() => setAddDialogTrackId("")}>
+        <div className="modalOverlay" onMouseDown={() => setAddDialogTrackId('')}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalHead">
               <div className="modalTitle">Альбомы</div>
-              <button type="button" className="btn" onClick={() => setAddDialogTrackId("")}>
+              <button type="button" className="btn" onClick={() => setAddDialogTrackId('')}>
                 ✕
               </button>
             </div>
@@ -2892,7 +2872,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     key={a.id}
                     type="button"
                     className="btn"
-                    style={{ justifyContent: "space-between" }}
+                    style={{ justifyContent: 'space-between' }}
                     onClick={() => addTrackToAlbum(a.id, addDialogTrackId).catch(() => {})}
                   >
                     <span>{a.name}</span>
@@ -2908,11 +2888,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       )}
 
       {removeDialogTrackId && (
-        <div className="modalOverlay" onMouseDown={() => setRemoveDialogTrackId("")}>
+        <div className="modalOverlay" onMouseDown={() => setRemoveDialogTrackId('')}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalHead">
               <div className="modalTitle">Убрать трек из альбома</div>
-              <button type="button" className="btn" onClick={() => setRemoveDialogTrackId("")}>
+              <button type="button" className="btn" onClick={() => setRemoveDialogTrackId('')}>
                 ✕
               </button>
             </div>
@@ -2929,11 +2909,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                     key={a.id}
                     type="button"
                     className="btn"
-                    style={{ justifyContent: "space-between" }}
+                    style={{ justifyContent: 'space-between' }}
                     onClick={() => {
                       removeTrackFromAlbum(a.id, removeDialogTrackId)
                         .catch(() => {})
-                        .finally(() => setRemoveDialogTrackId(""));
+                        .finally(() => setRemoveDialogTrackId(''));
                     }}
                   >
                     <span>{a.name}</span>
@@ -2950,11 +2930,11 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
       )}
 
       {moveDialogTrackId && (
-        <div className="modalOverlay" onMouseDown={() => setMoveDialogTrackId("")}>
+        <div className="modalOverlay" onMouseDown={() => setMoveDialogTrackId('')}>
           <div className="modal" onMouseDown={(e) => e.stopPropagation()}>
             <div className="modalHead">
               <div className="modalTitle">Переместить трек</div>
-              <button type="button" className="btn" onClick={() => setMoveDialogTrackId("")}>
+              <button type="button" className="btn" onClick={() => setMoveDialogTrackId('')}>
                 ✕
               </button>
             </div>
@@ -3001,7 +2981,7 @@ const currentMeta = currentTrack ? splitArtistTitle(currentTrack.file || current
                 onClick={() => {
                   moveTrackBetweenAlbums(moveFromAlbumId, moveToAlbumId, moveDialogTrackId)
                     .catch(() => {})
-                    .finally(() => setMoveDialogTrackId(""));
+                    .finally(() => setMoveDialogTrackId(''));
                 }}
               >
                 Переместить
