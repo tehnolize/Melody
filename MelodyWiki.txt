@@ -1,5 +1,6 @@
 Ссылки на разделы базы знаний в WEEEK:
 
+Quick Start - https://app.weeek.net/s/quick-start-document-OTM0ODc5fGExZDViMDcwLTkxYjktNGVhMi05ZjljLWExNzIyZWYyYjNiNA==
 Home - https://app.weeek.net/s/home-document-OTM0ODc5fGExOTAwZGYzLTZkYjgtNGMxYi05YTI2LTQ5MTQ4ZWY2MzNmZQ==
 Team - https://app.weeek.net/s/team-document-OTM0ODc5fGExOTAwZWYzLTI3ZGEtNDQxYi1hYjY4LWU3MGFlYzkxOGViZg==
 Glossary - https://app.weeek.net/s/glossary-document-OTM0ODc5fGExOTAxMDEzLTA5NDUtNGRlNS1hMzJjLTdiNzdiNWMwZDk5MQ==
