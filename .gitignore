@@ -8,3 +8,4 @@ landing/server/.env
 .DS_Store
 landing/.DS_Store
 landing/server/.DS_Store
+.env
