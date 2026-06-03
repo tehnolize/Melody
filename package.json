@@ -13,7 +13,10 @@
     "test:coverage": "jest --coverage",
     "test:integration": "jest --testMatch='**/*.integration.test.js'",
     "test:auth": "jest --testMatch='**/*.auth.test.js'",
-    "lint": "eslint landing/server --fix"
+    "lint": "eslint landing/server --fix",
+    "lint:check": "eslint landing/server",
+    "format": "prettier --write \"landing/server/**/*.js\"",
+    "format:check": "prettier --check \"landing/server/**/*.js\""
   },
   "keywords": [
     "music",
@@ -44,6 +47,7 @@
     "eslint-plugin-import": "^2.29.0",
     "jest": "^29.7.0",
     "nodemon": "^3.0.1",
+    "prettier": "^3.1.0",
     "supertest": "^6.3.3"
   },
   "engines": {
