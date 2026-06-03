@@ -13,8 +13,9 @@
     "test:coverage": "jest --coverage",
     "test:integration": "jest --testMatch='**/*.integration.test.js'",
     "test:auth": "jest --testMatch='**/*.auth.test.js'",
-    "lint": "eslint landing/server --fix",
+    "lint": "eslint landing/server --fix --max-warnings=100",
     "lint:check": "eslint landing/server",
+    "lint:strict": "eslint landing/server --max-warnings=0",
     "format": "prettier --write \"landing/server/**/*.js\"",
     "format:check": "prettier --check \"landing/server/**/*.js\""
   },
