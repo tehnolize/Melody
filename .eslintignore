@@ -1,0 +1,13 @@
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+.next/
+.nuxt/
+out/
+.cache/
+*.min.js
+**/*.config.js
+landing/client/
+landing/assets/
