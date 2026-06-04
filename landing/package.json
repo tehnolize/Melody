@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "echo 'ESLint not configured. To enable linting, run: npm install --save-dev eslint @typescript-eslint/parser'",
+    "test": "echo 'Testing framework not configured. To enable testing, run: npm install --save-dev vitest'",
+    "deploy": "echo 'Deployment not configured. Configure deployment platform (Vercel/Netlify/Render)'"
   },
   "dependencies": {
     "react": "18.3.1",
