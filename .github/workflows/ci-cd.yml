@@ -22,13 +22,13 @@ jobs:
               run: cd landing && npm install
 
             - name: Run linter
-              run: cd landing && npm run lint
+              run: npm run lint
 
             - name: Run unit tests
-              run: cd landing && npm test
+              run: npm test
 
             - name: Build project
-              run: cd landing && npm run build
+              run: npm run build
     cd:
         runs-on: ubuntu-latest
         needs: ci # Ждёт успешного завершения CI
@@ -39,6 +39,6 @@ jobs:
               
             - name: Deploy to Vercel/Netlify/Render
             # Здесь команды деплоя выбранной платформы
-              run: cd landing && npm run deploy
+              run: npm run deploy
               env:
                 DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
