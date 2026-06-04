@@ -30,6 +30,15 @@
 - Исправлено импорт App в src/main.tsx
 - Обновлен .gitignore
 - Создано конфигурация CI/CD
+- Созданый ветки database-changes, server-crud, backend-postgresql-auth, music-core-profile
+- Обновлен README.md
+- Слиты (merged) ветки database-changes, server-crud, backend-postgresql-auth, music-core-profile в main
+- Добавлен package.json с зависимостями проекта
+- Обновлены версии npm пакетов (исправлена ошибка jsonwebtoken)
+- Добавлена конфигурация ESLint и Prettier
+- Добавлена конфигурация ESLint и Prettier
+- Обновлены зависимости и конфигурация ESLint
+- Обновлен lint скрипт для CI/CD (--max-warnings=100)
 
 ### Основные функции
 | Функция | Описание | Статус |
