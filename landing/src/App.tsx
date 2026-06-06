@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { fmtTime, splitArtistTitle, clamp } from './lib/format';
 
 interface User {
   id: string;
@@ -66,28 +67,6 @@ function safeJson<T>(key: string, fallback: T): T {
   } catch {
     return fallback;
   }
-}
-
-function fmtTime(sec: number): string {
-  if (!Number.isFinite(sec) || sec < 0) return '0:00';
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-function splitArtistTitle(name: string): { artist: string; title: string } {
-  const base = name.replace(/\.mp3$/i, '');
-  const parts = base.split(' - ');
-  if (parts.length >= 2) {
-    const artist = parts[0].trim();
-    const title = parts.slice(1).join(' - ').trim();
-    return { artist, title };
-  }
-  return { artist: 'Unknown', title: base.trim() };
-}
-
-function clamp(n: number, a: number, b: number): number {
-  return Math.max(a, Math.min(b, n));
 }
 
 interface VirtualListProps<T> {
