@@ -76,6 +76,35 @@
 
 ![alt text](image-1.png)
 
+## 🧪 Сборка и тесты (Frontend / CI-CD)
+
+Все команды выполняются из каталога `landing` и запускаются без ручного вмешательства —
+эти же команды использует пайплайн CI/CD (`.github/workflows/ci-cd.yml`).
+
+```bash
+cd landing
+
+# Установка зависимостей
+npm install
+
+# Запуск unit-тестов (Vitest)
+npm test
+
+# Сборка проекта для продакшена (tsc + vite build -> dist/)
+npm run build
+
+# Локальный запуск в режиме разработки
+npm run dev
+
+# Предпросмотр собранной продакшен-версии
+npm run preview
+```
+
+Unit-тесты находятся в `landing/src/lib/format.test.ts` и проверяют базовую логику:
+- `fmtTime` — форматирование времени трека (секунды → `m:ss`);
+- `splitArtistTitle` — разбор имени файла `Artist - Title.mp3`;
+- `clamp` — ограничение числа заданным диапазоном.
+
 ## 🚀 Быстрый старт
 
 ### Требования
