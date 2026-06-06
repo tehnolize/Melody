@@ -23,5 +23,5 @@ export function splitArtistTitle(name: string): { artist: string; title: string 
 
 /** Ограничивает число n диапазоном [a, b]. */
 export function clamp(n: number, a: number, b: number): number {
-  return Math.max(a, Math.min(b, n));
+  return Math.min(a, Math.max(b, n));
 }
