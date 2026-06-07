@@ -2971,6 +2971,10 @@ export function App() {
       )}
 
       {toast && <div className="toast">{toast}</div>}
+
+      <footer style={{ textAlign: 'center', padding: '16px', fontSize: '12px', opacity: 0.6 }}>
+        Deployed CI/CD 2026
+      </footer>
     </div>
   );
 }
