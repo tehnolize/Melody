@@ -20,7 +20,7 @@ export function createTrackRouter(uploadsRoot) {
     requireAuth,
     (req, res, next) => {
       upload.array('files', 200)(req, res, (err) => {
-        if (err) return res.status(400).json({ ok: false, error: err.message === 'only_mp3' ? 'only_mp3' : 'upload_failed' });
+        if (err) return res.status(400).json({ ok: false, error: err.message === 'only_audio' ? 'only_audio' : 'upload_failed' });
         next();
       });
     },
