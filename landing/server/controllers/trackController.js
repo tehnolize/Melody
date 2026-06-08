@@ -37,14 +37,19 @@ export function createUploadMiddleware(uploadsRoot) {
           cb(e);
         }
       },
-      filename: (_req, _file, cb) => {
-        cb(null, `${randomUUID()}.mp3`);
+      filename: (_req, file, cb) => {
+        // сохраняем исходное расширение (.mp3 или .mp4), а не хардкодим .mp3
+        const ext = path.extname(file.originalname).toLowerCase();
+        const safeExt = ext === '.mp4' ? '.mp4' : '.mp3';
+        cb(null, `${randomUUID()}${safeExt}`);
       },
     }),
     limits: { fileSize: 200 * 1024 * 1024 },
     fileFilter: (_req, file, cb) => {
-      const ok = file.originalname.toLowerCase().endsWith('.mp3');
-      cb(ok ? null : new Error('only_mp3'), ok);
+      // принимаем и mp3, и mp4
+      const name = file.originalname.toLowerCase();
+      const ok = name.endsWith('.mp3') || name.endsWith('.mp4');
+      cb(ok ? null : new Error('only_audio'), ok);
     },
   });
 }
@@ -92,7 +97,9 @@ export async function streamTrack(req, res) {
     const ownerId = String(req.params.ownerId || '');
     const storageName = decodeURIComponent(String(req.params.storageName || ''));
 
-    if (!ownerId || !storageName || storageName.includes('..') || !storageName.toLowerCase().endsWith('.mp3')) {
+    const lowerName = storageName.toLowerCase();
+    if (!ownerId || !storageName || storageName.includes('..') ||
+        !(lowerName.endsWith('.mp3') || lowerName.endsWith('.mp4'))) {
       return res.status(400).end();
     }
 
@@ -110,7 +117,7 @@ export async function streamTrack(req, res) {
     if (!st.isFile()) return res.status(404).end();
 
     res.setHeader('Accept-Ranges', 'bytes');
-    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Type', lowerName.endsWith('.mp4') ? 'video/mp4' : 'audio/mpeg');
 
     const range = req.headers.range;
     if (!range) {

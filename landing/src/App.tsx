@@ -1116,9 +1116,12 @@ export function App() {
       return;
     }
 
-    const bad = files.filter((f) => !f.name.toLowerCase().endsWith('.mp3'));
+    const bad = files.filter((f) => {
+      const n = f.name.toLowerCase();
+      return !n.endsWith('.mp3') && !n.endsWith('.mp4');
+    });
     if (bad.length > 0) {
-      showToast('Можно загрузить только mp3');
+      showToast('Можно загрузить только mp3 или mp4');
       log.warn(`Invalid files rejected: ${bad.length}`);
       return;
     }
@@ -1832,7 +1835,7 @@ export function App() {
                 </div>
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <button className="btn" onClick={() => fileInputRef.current?.click()} disabled={!user}>
-                    + mp3
+                    + mp3/mp4
                   </button>
                   <button className="btn" onClick={() => dirInputRef.current?.click()} disabled={!user}>
                     + папка
@@ -1841,7 +1844,7 @@ export function App() {
                 <input
                   ref={fileInputRef}
                   type="file"
-                  accept=".mp3,audio/mpeg"
+                  accept=".mp3,.mp4,audio/mpeg,video/mp4"
                   multiple
                   style={{ display: 'none' }}
                   onChange={(e) => {
@@ -1852,7 +1855,7 @@ export function App() {
                 <input
                   ref={dirInputRef}
                   type="file"
-                  accept=".mp3,audio/mpeg"
+                  accept=".mp3,.mp4,audio/mpeg,video/mp4"
                   multiple
                   style={{ display: 'none' }}
                   onChange={(e) => {
